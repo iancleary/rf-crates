@@ -3,7 +3,36 @@
 //! These tests model actual satellite ground terminal receiver chains
 //! and verify cascaded gain, noise figure, P1dB, and dynamic range.
 
-use gainlineup::{cascade_vector_return_output, cascade_vector_return_vector, Block, Input};
+use gainlineup::{
+    cascade_vector_return_output, cascade_vector_return_vector, Block, Input, SignalNode,
+};
+
+#[test]
+fn noiseless_unity_stage_preserves_logarithmic_noise_power() {
+    let stage = Block {
+        name: "Ideal unity stage".into(),
+        gain_db: 0.0,
+        noise_figure_db: 0.0,
+        output_p1db_dbm: None,
+        output_ip3_dbm: None,
+    };
+    // The extreme levels exercise floating-point range, not physical RF operation.
+    for (noise_power_dbm, expected_snr_db) in [(-100.0, 20.0), (-4000.0, 3920.0), (4000.0, -4080.0)]
+    {
+        let input = SignalNode {
+            signal_frequency_hz: 1.0e9,
+            signal_bandwidth_hz: 1.0e6,
+            signal_power_dbm: -80.0,
+            noise_power_dbm,
+            cumulative_gain_db: 0.0,
+            ..SignalNode::default()
+        };
+        let output = input.cascade_block(&stage);
+        assert_eq!(output.noise_power_dbm, noise_power_dbm);
+        assert_eq!(output.signal_power_dbm, -80.0);
+        assert_eq!(output.signal_to_noise_ratio_db(), expected_snr_db);
+    }
+}
 
 /// Helper: assert float equality within tolerance
 fn assert_approx(actual: f64, expected: f64, tol: f64, msg: &str) {
