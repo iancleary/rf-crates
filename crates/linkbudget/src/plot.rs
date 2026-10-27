@@ -278,11 +278,15 @@ mod tests {
             frequency_dependent_loss: Some(3.0),
         };
 
-        let output_path = "target/test_link_budget.html";
-        let html_result = generate_html_summary(&budget, output_path);
-        assert!(html_result.is_ok());
+        let output_directory =
+            std::env::temp_dir().join(format!("linkbudget-summary-{}", std::process::id()));
+        std::fs::create_dir(&output_directory).unwrap();
+        let output_path = output_directory.join("summary.html");
+        generate_html_summary(&budget, output_path.to_str().unwrap()).unwrap();
 
-        let content = std::fs::read_to_string(output_path).unwrap();
+        let content = std::fs::read_to_string(&output_path).unwrap();
+        std::fs::remove_file(&output_path).unwrap();
+        std::fs::remove_dir(&output_directory).unwrap();
         assert!(content.contains("Test Link"));
         assert!(content.contains("<svg"));
         assert!(content.contains("Transmitter"));

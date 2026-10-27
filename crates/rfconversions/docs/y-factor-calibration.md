@@ -133,6 +133,10 @@ case in the sampled classification gate.
 
 ## Rerun the offline evidence
 
+**Monorepo:** run `CARGO_NET_OFFLINE=true just numerics` at the workspace root.
+The maintained runner discovers the shared Cargo target directory. The manual
+commands below describe a standalone crate checkout, not the workspace root.
+
 Requires cached Cargo dependencies, an available Rust toolchain and Python via
 uv; no package installation or Python dependencies are needed. From the repository
 root (temporary outputs are outside the repository):

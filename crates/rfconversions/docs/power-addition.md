@@ -144,6 +144,10 @@ Decimal exponents. No external packages or hardware measurements are involved.
 
 ## Rerun offline
 
+**Monorepo:** run `CARGO_NET_OFFLINE=true just numerics` at the workspace root.
+The maintained runner discovers the shared Cargo target directory. The manual
+commands below describe a standalone crate checkout, not the workspace root.
+
 From the repository root, with Rust, `uv`, and an already available Python
 (no installations required):
 

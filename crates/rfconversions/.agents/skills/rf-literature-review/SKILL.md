@@ -114,6 +114,14 @@ description: Evaluate published RF conversion and numerical methods against rfco
 
 ## Rerun the numerical evidence
 
+In the monorepo, run `just numerics` from the workspace root. In the owning crate
+directory, run `uv run --offline --no-project` followed by this skill's
+`scripts/verify_numerics.py` path. The runner resolves Cargo's target directory,
+executes the three retained comparisons, and runs their public integration
+acceptance tests. The noise comparison alone is diagnostic, not a pass/fail gate.
+It uses the host compiler and default debug profile; cross-target verification
+requires a separate approved execution procedure.
+
 This original sketch probe does not replace the final comparisons in the
 implementation guides. The bundled [probe](scripts/numerical_probe.rs) calls the actual checkout for
 existing conversions and compares candidate formulas with independently computed

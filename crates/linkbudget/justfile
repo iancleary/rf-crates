@@ -31,7 +31,7 @@ doc-check:
 
 # verify package contents without publishing
 package:
-    cargo package
+    cargo package --workspace --locked
 
 # build the crate
 build:

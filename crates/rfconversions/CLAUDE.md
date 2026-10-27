@@ -60,12 +60,9 @@ just check
 
 ## Releases
 
-Maintain the release workflow with the Forge-managed `create-release-process` skill. Execute ordinary releases with the repo-local `cut-release` flow documented in `docs/release.md`:
-
-```bash
-just cut-release --dry-run --version <semver>
-just cut-release --version <semver>
-```
+This crate belongs to the public RF workspace. Follow the root
+[release policy](../../docs/releases.md). Standalone release commands are blocked
+until the monorepo cutover is approved. Use root `just check` for verification.
 
 ## Module Map
 
@@ -90,5 +87,5 @@ Use `just help` to discover supported recipes. Use `just fmt-check`, `just lint`
 `just test`, and `just doc-check` for focused verification. `just check` also
 verifies packaging and requires a clean checkout; `just ci` adds a release build.
 `just fmt` (alias `just format`) and `just lint-fix` explicitly modify source.
-Release arguments are forwarded literally by `just cut-release`; quote paths
-that contain spaces. Project-specific recipes remain optional.
+Use the root `just check` for complete workspace verification. Publication is
+blocked during migration; see the root release policy.

@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+
+# Standalone release mutation is not valid inside the combined workspace.
+if [[ -f "$(dirname "${BASH_SOURCE[0]}")/../../../Cargo.toml" ]]; then
+  printf '%s\n' 'Release blocked in the monorepo; read the root docs/releases.md.' >&2
+  exit 2
+fi
 set -euo pipefail
 
 usage() {

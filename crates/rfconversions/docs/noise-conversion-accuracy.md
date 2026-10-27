@@ -81,6 +81,10 @@ than clamping all underflows. Factor and cascade behavior is untouched.
 
 ## Rerun offline
 
+**Monorepo:** run `CARGO_NET_OFFLINE=true just numerics` at the workspace root.
+The maintained runner discovers the shared Cargo target directory. The manual
+commands below describe a standalone crate checkout, not the workspace root.
+
 Prerequisites: the repository's Rust toolchain, `uv`, an already installed Python
 with stdlib Decimal, and cached Cargo dependencies. Do not install anything for
 this procedure. Run from the checkout root; helper resources stay together in

@@ -55,16 +55,14 @@ cargo clippy --all-targets --all-features -- -D warnings
 cargo fmt --all -- --check
 RUSTDOCFLAGS="-D warnings" cargo doc --all-features --no-deps
 just check
-just cut-release --dry-run --version <semver>
+cargo package --workspace --locked
 ```
 
 ## Releases
 
-Maintain the deterministic release workflow with `create-release-process`.
-Execute ordinary releases with `cut-release` via `just cut-release`; see
-`docs/release.md` for the repo-local contract. The runner requires an explicit
-SemVer `--version`, supports read-only version queries, and creates the GitHub
-release as the final public step of a real release.
+This crate is a member of the public RF workspace. Follow the root
+[release policy](../../docs/releases.md). Standalone release commands are blocked
+in this checkout; publication requires an approved monorepo cutover.
 
 ## Notes
 
@@ -78,5 +76,5 @@ Use `just help` to discover supported recipes. Use `just fmt-check`, `just lint`
 `just test`, and `just doc-check` for focused verification. `just check` also
 verifies packaging and requires a clean checkout; `just ci` adds a release build.
 `just fmt` (alias `just format`) and `just lint-fix` explicitly modify source.
-Release arguments are forwarded literally by `just cut-release`; quote paths
-that contain spaces. Project-specific recipes remain optional.
+Use the root `just check` for complete workspace verification. Publication is
+blocked during migration; see the root release policy.

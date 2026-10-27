@@ -346,7 +346,7 @@ pub fn touchstone_file_path_and_frequency_to_struct(
 
     // check if frequency is within the touchstone file
 
-    let frequency_vector = s2p.f.clone();
+    let frequency_vector = s2p.frequencies().to_vec();
     let contains_frequency = frequency_vector.contains(&frequency_in_hz);
 
     if !contains_frequency {

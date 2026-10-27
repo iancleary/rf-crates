@@ -1,0 +1,18 @@
+[workspace]
+members = [
+    "crates/rfconversions",
+    "crates/touchstone",
+    "crates/gainlineup",
+    "crates/linkbudget",
+]
+exclude = [
+    "crates/gainlineup/examples",
+    "crates/gainlineup/examples/montecarlo-gain-target",
+    "crates/linkbudget/examples/montecarlo-cn0-target",
+    "crates/touchstone/fuzz",
+]
+resolver = "2"
+
+[workspace.dependencies]
+rfconversions = { path = "crates/rfconversions", version = "0.7.7" }
+touchstone = { path = "crates/touchstone", version = "0.16.0" }

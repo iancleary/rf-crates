@@ -64,19 +64,14 @@ cargo run -- files/ntwk3.s2p      # CLI: plot a single file (opens HTML)
 cargo run -- files/               # CLI: plot all files in directory
 cargo run -- cascade f1.s2p f2.s2p  # CLI: cascade two 2-port networks
 cargo doc --open                  # Generate and view API docs
-just cut-release --dry-run --notes-file /tmp/touchstone-release.md  # Preview release
-just cut-release --notes-file /tmp/touchstone-release.md            # Cut release
+cargo package --workspace --locked  # Verify workspace package artifacts
 ```
 
 ## Release Workflow
 
-- Use the `cut-release` skill for ordinary release execution.
-- Use the `create-release-process` skill only when changing the release workflow itself.
-- Release docs live in `docs/release.md`.
-- The checked-in entrypoint is `just cut-release`; it delegates to `scripts/cut-release.sh`.
-- Release notes must be written to a local markdown file and passed with `--notes-file`.
-- Omitted `--version` infers the next patch version from `Cargo.toml`; pass `--version X.Y.Z` for minor releases.
-- The runner updates `Cargo.toml`, `Cargo.lock`, `AGENTS.md`, and `CLAUDE.md`, validates with `just check` and `cargo package`, commits, pushes `main`, and creates the GitHub release. The release event publishes to crates.io.
+This crate is a member of the public RF workspace. Follow the root
+[release policy](../../docs/releases.md). Standalone release commands are blocked
+in this checkout; publication requires an approved monorepo cutover.
 
 ## Module Map
 
@@ -149,7 +144,7 @@ Use `just help` to discover supported recipes. Use `just fmt-check`, `just lint`
 `just test`, and `just doc-check` for focused verification. `just check` also
 verifies packaging and requires a clean checkout; `just ci` adds a release build.
 `just fmt` (alias `just format`) and `just lint-fix` explicitly modify source.
-Release arguments are forwarded literally by `just cut-release`; quote paths
-that contain spaces. Project-specific recipes remain optional.
+Use the root `just check` for complete workspace verification. Publication is
+blocked during migration; see the root release policy.
 
 `just fuzz [seconds]` accepts an integer from 1 to 3600 (default: 60).
