@@ -1,0 +1,64 @@
+# AGENTS.md - linkbudget
+
+Rust crate for RF link budget analysis across TX, path loss, RX, SNR, Eb/No,
+BER, and margin workflows for satellite and terrestrial communication systems.
+
+## Agent Usage
+
+Use `linkbudget` when the task is an end-to-end communication link question:
+EIRP, FSPL, receiver G/T, C/No, SNR, Eb/No, BER, fade margin, modulation/FEC,
+PFD, Doppler, orbit geometry, receiver sensitivity, EVM, or quantization. Build
+a `LinkBudget` from `Transmitter`, `PathLoss`, and `Receiver` when the whole
+link matters; use the smaller modules directly for isolated formulas.
+
+Do not use this crate for raw `.sNp` parsing or network-parameter conversion;
+use `touchstone`. Do not use it for ordered hardware-block lineup analysis with
+P1dB/IP3 per stage; use `gainlineup`. Use `rfconversions` for standalone dB,
+dBm, wavelength, and noise-temperature conversions.
+
+Keep units explicit in examples and fixes: powers are generally dBm or dBW as
+named, antenna gains are dBi, frequencies are Hz, distances are meters,
+bandwidths and bit/symbol rates are Hz or bps as named, C/No is dB-Hz, and
+Eb/No/SNR/margins are dB. Avoid mixing occupied bandwidth, noise bandwidth, bit
+rate, symbol rate, and FEC code rate without naming each one.
+
+For deeper repo navigation, verification choices, and how to make future changes
+accretive, see `docs/agent-operating-loop.md`.
+
+## Commands
+
+```bash
+cargo test
+cargo clippy -- -D warnings
+cargo fmt -- --check
+cargo run
+cargo doc --open
+just cut-release --dry-run --version <semver>
+```
+
+## Releases
+
+Maintain the deterministic release workflow with `create-release-process`.
+Execute ordinary releases with `cut-release` via `just cut-release`; see
+`docs/release.md` for the repo-local contract. The runner requires an explicit
+SemVer `--version`, supports read-only version queries, and creates the GitHub
+release as the final public step of a real release.
+
+## Notes
+
+- Keep changes minimal and aligned to the crate's RF link-budget purpose.
+- Prefer public examples that are mirrored by `tests/readme_examples.rs`, and
+  scenario tests for realistic link-closure behavior.
+- Run `cargo fmt -- --check`, `cargo clippy --all-targets --all-features -- -D warnings`, and `cargo test` for behavior changes.
+- Claude Code guidance lives in `CLAUDE.md`; keep both files consistent when changing repo workflows.
+
+## Shared Just Interface
+
+Use `just help` to discover supported recipes. Use `just fmt-check`, `just lint`,
+`just test`, and `just doc-check` for focused verification. `just check` also
+verifies packaging and requires a clean checkout; `just ci` adds a release build.
+`just fmt` (alias `just format`) and `just lint-fix` explicitly modify source.
+Release arguments are forwarded literally by `just cut-release`; quote paths
+that contain spaces. Project-specific recipes remain optional.
+
+`just dev [target]` defaults to `files/example.toml` and generates and opens HTML.

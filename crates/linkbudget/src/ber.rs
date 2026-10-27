@@ -1,0 +1,279 @@
+//! Bit Error Rate (BER) curves for common modulation schemes.
+//!
+//! Provides theoretical BER as a function of Eb/No (uncoded) or
+//! required Eb/No for a target BER.
+//!
+//! All Eb/No values are in **linear** (not dB) unless suffixed with `_db`.
+//! Assume coherent detection in AWGN, correct synchronization, and no residual
+//! ISI. Higher-order curves are nearest-neighbor approximations, not exact BER.
+//! See `docs/physics-communications.md` for Gaussian-decision derivations,
+//! constellation restrictions, and numerical accuracy limits.
+
+use std::f64::consts::PI;
+
+use crate::modulation::Modulation;
+
+/// Complementary error function approximation (erfc).
+/// Uses Abramowitz & Stegun approximation 7.1.26, max absolute error ~1.5e-7.
+/// An absolute bound does not ensure small relative error in a very small tail.
+#[must_use]
+pub fn erfc(x: f64) -> f64 {
+    if x < 0.0 {
+        return 2.0 - erfc(-x);
+    }
+    let t = 1.0 / (1.0 + 0.3275911 * x);
+    let poly = t
+        * (0.254829592
+            + t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))));
+    poly * (-x * x).exp()
+}
+
+/// Q-function: Q(x) = 0.5 * erfc(x / sqrt(2))
+#[must_use]
+pub fn q_function(x: f64) -> f64 {
+    0.5 * erfc(x / std::f64::consts::SQRT_2)
+}
+
+/// Ideal coherent BPSK and Gray-QPSK BER in AWGN.
+///
+/// BER = Q(sqrt(2 * Eb/No))
+/// A unit-energy matched filter yields means ±sqrt(Eb) and noise variance N0/2.
+/// Crossing the zero threshold is therefore this Gaussian tail. Gray QPSK has
+/// two orthogonal decisions with the same energy per bit.
+#[doc(alias = "BER")]
+#[must_use]
+pub fn ber_bpsk(eb_no_linear: f64) -> f64 {
+    q_function((2.0 * eb_no_linear).sqrt())
+}
+
+/// BER for M-PSK (M >= 4, Gray coded).
+///
+/// BER ≈ (2/k) * Q(sqrt(2*k*Eb/No) * sin(π/M)), where k = log2(M).
+/// Each adjacent decision boundary is sqrt(Es)*sin(π/M) from the symbol.
+/// Count two boundary crossings and one Gray-bit error per nearest neighbor.
+/// The higher-order approximation is useful at low BER; BPSK is handled exactly
+/// and M=4 reduces to the ideal QPSK bit curve. Orders are not validated.
+#[doc(alias = "BER")]
+#[must_use]
+pub fn ber_mpsk(eb_no_linear: f64, m: u32) -> f64 {
+    if m == 2 {
+        return ber_bpsk(eb_no_linear);
+    }
+    let k = (m as f64).log2();
+    let sin_term = (PI / m as f64).sin();
+    (2.0 / k) * q_function((2.0 * k * eb_no_linear).sqrt() * sin_term)
+}
+
+/// Approximate BER for square M-QAM (Gray coded, M = 4, 16, 64, 256, …).
+///
+/// BER ≈ (4/k) * (1 - 1/√M) * Q(sqrt(3*k*Eb/No / (M-1))).
+/// For M=4 (QPSK), this reduces to the QPSK formula.
+/// With axis spacing 2d, averaging squared levels gives Es = 2*d²*(M-1)/3.
+/// The coefficient counts nearest boundaries; dividing by k assumes one bit
+/// error per adjacent decision. Non-square orders such as 32 are evaluated but
+/// lie outside this derivation. See `docs/physics-communications.md`.
+#[doc(alias = "BER")]
+#[must_use]
+pub fn ber_mqam(eb_no_linear: f64, m: u32) -> f64 {
+    if m == 4 {
+        return ber_bpsk(eb_no_linear); // QPSK = BPSK in Eb/No
+    }
+    let k = (m as f64).log2();
+    let sqrt_m = (m as f64).sqrt();
+    let coeff = (4.0 / k) * (1.0 - 1.0 / sqrt_m);
+    let arg = (3.0 * k * eb_no_linear / (m as f64 - 1.0)).sqrt();
+    coeff * q_function(arg)
+}
+
+/// BER for any supported modulation type.
+#[doc(alias = "BER")]
+#[must_use]
+pub fn ber(eb_no_linear: f64, modulation: &Modulation) -> f64 {
+    match modulation {
+        Modulation::Bpsk => ber_bpsk(eb_no_linear),
+        Modulation::Qpsk => ber_bpsk(eb_no_linear),
+        Modulation::Mpsk(m) => ber_mpsk(eb_no_linear, *m),
+        Modulation::Mqam(m) => ber_mqam(eb_no_linear, *m),
+        // This selects the coherent precoded-MSK model, not every MSK detector.
+        Modulation::Msk => ber_bpsk(eb_no_linear),
+    }
+}
+
+/// BER from Eb/No in dB.
+#[doc(alias = "BER")]
+#[doc(alias = "Eb/N0")]
+#[must_use]
+pub fn ber_from_db(eb_no_db: f64, modulation: &Modulation) -> f64 {
+    let eb_no_linear = 10.0_f64.powf(eb_no_db / 10.0);
+    ber(eb_no_linear, modulation)
+}
+
+/// Link margin in dB: actual Eb/No minus required Eb/No for a target BER.
+///
+/// Positive = link closes with headroom. Negative = link does not close.
+#[doc(alias = "link margin")]
+#[must_use]
+pub fn link_margin_db(
+    actual_eb_no_db: f64,
+    target_ber: f64,
+    modulation: &Modulation,
+) -> Option<f64> {
+    let required = required_eb_no_db(target_ber, modulation)?;
+    Some(actual_eb_no_db - required)
+}
+
+/// Required Eb/No (dB) for a target BER, found by bisection search.
+///
+/// Returns `None` for a nonfinite or nonpositive target, nonfinite BER at a
+/// search endpoint, or a target outside the BER values reached in [−5, 50] dB.
+/// The stopping residual is relative BER error below 1e-6 against this module's
+/// forward approximation, with at most 100 iterations. It does not certify the
+/// physical model, a constellation's validity, or Gaussian-tail accuracy.
+#[doc(alias = "Eb/N0")]
+#[must_use]
+pub fn required_eb_no_db(target_ber: f64, modulation: &Modulation) -> Option<f64> {
+    let mut lo = -5.0_f64;
+    let mut hi = 50.0_f64;
+
+    if !target_ber.is_finite() || target_ber <= 0.0 {
+        return None;
+    }
+    let ber_at_lo = ber_from_db(lo, modulation);
+    let ber_at_hi = ber_from_db(hi, modulation);
+    if !ber_at_lo.is_finite()
+        || !ber_at_hi.is_finite()
+        || target_ber > ber_at_lo
+        || target_ber < ber_at_hi
+    {
+        return None;
+    }
+
+    // BER decreases as Eb/No increases, so we search for the crossing
+    for _ in 0..100 {
+        let mid = (lo + hi) / 2.0;
+        let ber_mid = ber_from_db(mid, modulation);
+        if (ber_mid - target_ber).abs() / target_ber < 1e-6 {
+            return Some(mid);
+        }
+        if ber_mid > target_ber {
+            lo = mid; // need more Eb/No
+        } else {
+            hi = mid; // too much Eb/No
+        }
+    }
+    Some((lo + hi) / 2.0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::modulation::Modulation;
+
+    #[test]
+    fn erfc_zero() {
+        assert!((erfc(0.0) - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn required_eb_no_rejects_invalid_or_unreachable_targets() {
+        let modulation = Modulation::Qpsk;
+        for target in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, 0.0, -1e-5, 0.5] {
+            assert_eq!(required_eb_no_db(target, &modulation), None);
+        }
+        let target = 1e-5;
+        let required = required_eb_no_db(target, &modulation).unwrap();
+        assert!(required.is_finite());
+        assert!(((ber_from_db(required, &modulation) - target) / target).abs() < 1e-6);
+    }
+
+    #[test]
+    fn erfc_large() {
+        assert!(erfc(5.0) < 1e-10);
+    }
+
+    #[test]
+    fn erfc_negative() {
+        assert!((erfc(-0.0) - 1.0).abs() < 1e-6);
+        // erfc(-x) = 2 - erfc(x)
+        let val = erfc(-1.0);
+        assert!((val - (2.0 - erfc(1.0))).abs() < 1e-6);
+    }
+
+    #[test]
+    fn bpsk_ber_at_known_points() {
+        // At Eb/No = 0 dB (linear = 1): BER ≈ 0.0786
+        let ber_0db = ber_bpsk(1.0);
+        assert!((ber_0db - 0.0786).abs() < 0.005);
+
+        // At Eb/No = 10 dB (linear = 10): BER ≈ 3.87e-6
+        let ber_10db = ber_bpsk(10.0);
+        assert!(ber_10db < 1e-4);
+        assert!(ber_10db > 1e-7);
+    }
+
+    #[test]
+    fn qpsk_same_as_bpsk() {
+        // QPSK and BPSK have identical BER vs Eb/No
+        let eb_no = 5.0;
+        let ber_bpsk_val = ber_bpsk(eb_no);
+        let ber_qpsk_val = ber(eb_no, &Modulation::Qpsk);
+        assert!((ber_bpsk_val - ber_qpsk_val).abs() < 1e-15);
+    }
+
+    #[test]
+    fn higher_order_qam_needs_more_eb_no() {
+        // 64-QAM needs more Eb/No than 16-QAM for same BER
+        let eb_no = 10.0; // linear
+        let ber_16 = ber_mqam(eb_no, 16);
+        let ber_64 = ber_mqam(eb_no, 64);
+        assert!(
+            ber_64 > ber_16,
+            "64-QAM should have higher BER than 16-QAM at same Eb/No"
+        );
+    }
+
+    #[test]
+    fn required_eb_no_bpsk_1e_minus_5() {
+        // BPSK BER = 1e-5 requires Eb/No ≈ 9.6 dB
+        let eb_no = required_eb_no_db(1e-5, &Modulation::Bpsk).unwrap();
+        assert!((eb_no - 9.6).abs() < 0.2, "Expected ~9.6 dB, got {}", eb_no);
+    }
+
+    #[test]
+    fn required_eb_no_16qam_1e_minus_6() {
+        // 16-QAM BER = 1e-6 requires Eb/No ≈ 14.4 dB
+        let eb_no = required_eb_no_db(1e-6, &Modulation::Mqam(16)).unwrap();
+        assert!(
+            eb_no > 13.0 && eb_no < 16.0,
+            "Expected ~14.4 dB, got {}",
+            eb_no
+        );
+    }
+
+    #[test]
+    fn ber_from_db_wrapper() {
+        let ber_val = ber_from_db(10.0, &Modulation::Bpsk);
+        let ber_direct = ber_bpsk(10.0_f64.powf(10.0 / 10.0));
+        assert!((ber_val - ber_direct).abs() < 1e-15);
+    }
+
+    #[test]
+    fn msk_same_as_bpsk() {
+        let eb_no = 7.0;
+        let ber_msk = ber(eb_no, &Modulation::Msk);
+        let ber_bpsk_val = ber_bpsk(eb_no);
+        assert!((ber_msk - ber_bpsk_val).abs() < 1e-15);
+    }
+
+    #[test]
+    fn ber_8psk() {
+        // 8-PSK at Eb/No = 10 dB should have higher BER than QPSK
+        let eb_no = 10.0_f64.powf(10.0 / 10.0);
+        let ber_qpsk = ber(eb_no, &Modulation::Qpsk);
+        let ber_8psk = ber(eb_no, &Modulation::Mpsk(8));
+        assert!(
+            ber_8psk > ber_qpsk,
+            "8-PSK should have higher BER than QPSK"
+        );
+    }
+}

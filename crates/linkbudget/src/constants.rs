@@ -1,0 +1,117 @@
+//! Physical constants used in link budget and orbital calculations.
+//!
+//! The speed of light is exact in SI. G is measured, and the stored body masses
+//! and radii are approximate model inputs. Their decimal digits do not imply
+//! exact physical knowledge. See `docs/physics-geometry-and-errors.md`.
+
+/// Speed of light in vacuum (m/s), exact by the SI definition of the metre.
+#[doc(alias = "c")]
+pub const SPEED_OF_LIGHT: f64 = 299792458.0;
+
+/// Mean radius of Earth (m).
+pub const RADIUS_OF_EARTH: f64 = 6371000.0;
+
+/// Mass of Earth (kg).
+pub const MASS_OF_EARTH: f64 = 5.972e24;
+
+/// Mean radius of the Moon (m).
+pub const RADIUS_OF_MOON: f64 = 1737400.0;
+
+/// Mass of the Moon (kg).
+pub const MASS_OF_MOON: f64 = 7.34767309e22;
+
+/// Mean radius of the Sun (m).
+pub const RADIUS_OF_SUN: f64 = 695500000.0;
+
+/// Mass of the Sun (kg).
+pub const MASS_OF_SUN: f64 = 1.98847e30;
+
+/// Mean radius of Mars (m).
+pub const RADIUS_OF_MARS: f64 = 3389500.0;
+
+/// Mass of Mars (kg).
+pub const MASS_OF_MARS: f64 = 6.4165e23;
+
+/// Gravitational constant G (m³·kg⁻¹·s⁻²).
+///
+/// The stored central value is 6.67430×10⁻¹¹; the CODATA 2022 standard
+/// uncertainty is 0.00015×10⁻¹¹ m³·kg⁻¹·s⁻². This is not an exact SI constant.
+/// <https://physics.nist.gov/cuu/Constants/Table/allascii.txt>
+pub const GRAVITATIONAL_CONSTANT: f64 = 0.0000000000667430;
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn speed_of_light() {
+        use super::SPEED_OF_LIGHT;
+
+        assert_eq!(299792458.0, SPEED_OF_LIGHT);
+    }
+
+    #[test]
+    fn gravitational_constant() {
+        use super::GRAVITATIONAL_CONSTANT;
+
+        const BASE_TEN: f64 = 10.0;
+        const POWER_OF_NEGATIVE_ELEVEN: f64 = -11.0;
+        let expected: f64 = 6.67430 * BASE_TEN.powf(POWER_OF_NEGATIVE_ELEVEN);
+        assert_eq!(expected, GRAVITATIONAL_CONSTANT);
+    }
+
+    #[test]
+    fn radius_of_earth() {
+        use super::RADIUS_OF_EARTH;
+
+        assert_eq!(6371000.0, RADIUS_OF_EARTH);
+    }
+
+    #[test]
+    fn mass_of_earth() {
+        use super::MASS_OF_EARTH;
+
+        assert_eq!(5.972e24, MASS_OF_EARTH);
+    }
+
+    #[test]
+    fn radius_of_moon() {
+        use super::RADIUS_OF_MOON;
+
+        assert_eq!(1737400.0, RADIUS_OF_MOON);
+    }
+
+    #[test]
+    fn mass_of_moon() {
+        use super::MASS_OF_MOON;
+
+        assert_eq!(7.34767309e22, MASS_OF_MOON);
+    }
+
+    #[test]
+    fn radius_of_sun() {
+        use super::RADIUS_OF_SUN;
+
+        assert_eq!(695500000.0, RADIUS_OF_SUN);
+    }
+
+    #[test]
+    fn mass_of_sun() {
+        use super::MASS_OF_SUN;
+
+        assert_eq!(1.98847e30, MASS_OF_SUN);
+    }
+
+    #[test]
+    fn radius_of_mars() {
+        use super::RADIUS_OF_MARS;
+
+        assert_eq!(3389500.0, RADIUS_OF_MARS);
+    }
+
+    #[test]
+    fn mass_of_mars() {
+        use super::MASS_OF_MARS;
+
+        assert_eq!(6.4165e23, MASS_OF_MARS);
+    }
+}
