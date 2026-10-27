@@ -3,13 +3,13 @@ authors = ["Ian Cleary <iancleary@hey.com>"]
 description = "Touchstone (s2p, etc.) file parser, plotter, and more"
 documentation = "https://docs.rs/touchstone"
 edition = "2021"
-homepage = "https://github.com/iancleary/touchstone"
+homepage = "https://github.com/iancleary/rf-crates/tree/main/crates/touchstone"
 keywords = ["touchstone", "s-parameters", "rf", "parser", "plotting"]
 categories = ["command-line-utilities", "parser-implementations", "science", "visualization"]
 license = "MIT"
 name = "touchstone"
 readme = "README.md"
-repository = "https://github.com/iancleary/touchstone"
+repository = "https://github.com/iancleary/rf-crates"
 version = "0.16.0"
 exclude = [
     "fuzz/*",

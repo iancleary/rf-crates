@@ -2,7 +2,7 @@
 
 ## Overview
 
-Rust crate for parsing, analyzing, and writing Touchstone (SNP) files — the industry-standard format for S-parameter data. Supports 1-port through N-port (tested to 32-port), all data formats (RI/MA/DB), generated networks, interpolation/resampling, reference impedance metadata, network parameter conversions, and 2-port network cascading by direct S-parameter composition. Published on crates.io; current release target is v0.16.0.
+Rust crate for parsing, analyzing, and writing Touchstone (SNP) files — the industry-standard format for S-parameter data. Supports 1-port through N-port (tested to 32-port), all data formats (RI/MA/DB), generated networks, interpolation/resampling, reference impedance metadata, network parameter conversions, and 2-port network cascading by direct S-parameter composition. Published on crates.io with an independent version in the root release contract.
 
 ## Agent Usage
 
@@ -71,7 +71,7 @@ cargo package --workspace --locked  # Verify workspace package artifacts
 
 This crate is a member of the public RF workspace. Follow the root
 [release policy](../../docs/releases.md). Standalone release commands are blocked
-in this checkout; publication requires an approved monorepo cutover.
+in this checkout; use the crate-qualified root release contract.
 
 ## Module Map
 
@@ -144,7 +144,7 @@ Use `just help` to discover supported recipes. Use `just fmt-check`, `just lint`
 `just test`, and `just doc-check` for focused verification. `just check` also
 verifies packaging and requires a clean checkout; `just ci` adds a release build.
 `just fmt` (alias `just format`) and `just lint-fix` explicitly modify source.
-Use the root `just check` for complete workspace verification. Publication is
-blocked during migration; see the root release policy.
+Use the root `just check` for complete workspace verification. Publication needs
+explicit authorization and the root crate-specific release procedure.
 
 `just fuzz [seconds]` accepts an integer from 1 to 3600 (default: 60).

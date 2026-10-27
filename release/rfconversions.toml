@@ -1,0 +1,18 @@
+[release]
+name = "rfconversions"
+version_source = "crates/rfconversions/Cargo.toml"
+runner_protocol = "prepared-v1"
+runner = ["uv", "run", "--offline", "--no-project", "scripts/release.py", "tag-release", "--provider", "github", "--tag-prefix", "rfconversions-v", "--branch", "main", "--notes-required", "--not-latest"]
+dry_run_args = ["--dry-run"]
+current_version_command = ["uv", "run", "--offline", "--no-project", "scripts/release.py", "cargo-current-version", "--version-source", "crates/rfconversions/Cargo.toml"]
+validate_version_command = ["uv", "run", "--offline", "--no-project", "scripts/release_policy.py", "validate", "rfconversions"]
+notes_file = "release/notes/rfconversions.md"
+publish = true
+
+[checks]
+commands = [["just", "ci"], ["cargo", "publish", "--dry-run", "--locked", "-p", "rfconversions"]]
+
+[runner_source]
+repository = "https://github.com/iancleary/release-skills"
+revision = "d24a23c89279b2676f6bf3f9145c4d59147c5a6f"
+sha256 = "10869f02fe8a1190e75cc3e70eef85012e89dba52b89d865f79a6a9fb317139e"

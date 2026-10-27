@@ -40,7 +40,7 @@ cargo package --workspace --locked
 
 This crate is a member of the public RF workspace. Follow the root
 [release policy](../../docs/releases.md). Standalone release commands are blocked
-in this checkout; publication requires an approved monorepo cutover.
+in this checkout; use the crate-qualified root release contract.
 
 ## Notes
 
@@ -56,7 +56,7 @@ Use `just help` to discover supported recipes. Use `just fmt-check`, `just lint`
 `just test`, and `just doc-check` for focused verification. `just check` also
 verifies packaging and requires a clean checkout; `just ci` adds a release build.
 `just fmt` (alias `just format`) and `just lint-fix` explicitly modify source.
-Use the root `just check` for complete workspace verification. Publication is
-blocked during migration; see the root release policy.
+Use the root `just check` for complete workspace verification. Publication needs
+explicit authorization and the root crate-specific release procedure.
 
 `just dev [target]` defaults to `files/example.toml` and generates and opens HTML.

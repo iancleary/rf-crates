@@ -76,8 +76,9 @@ build outputs, credentials, or unrelated open feature branches were imported.
    the actual HTML generator without depending on build-directory placement.
 6. Add one root CI workflow. Retain imported nested workflows for provenance,
    but do not activate their standalone publish events.
-7. Guard old release scripts before mutation. Release automation requires the
-   separate [cutover procedure](releases.md).
+7. Guard old release scripts before mutation. The subsequent release cutover
+   retains those guards and adds independent crate contracts using the unchanged
+   maintained release runner; see the [release procedure](releases.md).
 
 Baseline all-feature tests passed for rfconversions, touchstone, and gainlineup.
 Linkbudget's initial relocated-target run failed only its HTML-output-directory

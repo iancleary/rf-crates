@@ -24,9 +24,10 @@ local versioned path dependencies. Keep existing integration, documentation,
 feature, lint, and package checks. Run Python through `uv run`.
 
 Root release policy supersedes inherited standalone release instructions.
-`just cut-release` and member release scripts are intentionally blocked until
-cutover is approved. Nested `.github` workflows are historical source files,
-not active monorepo automation. Do not promote their publish steps to root CI.
+Use `just prepare-release <crate>` and the selected `release/<crate>.toml`
+contract only for explicitly authorized releases. Legacy member release scripts
+remain blocked. Nested `.github` workflows are historical source files, not
+active monorepo automation. Ordinary CI must never receive the registry token.
 
 Each worktree must have its own Cargo target directory. Keep reusable procedures
 in self-contained skill folders. Extend existing documentation and skill-owned

@@ -1,0 +1,61 @@
+name: Publish RF crate
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rf-crates-publication
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.repository == 'iancleary/rf-crates' && !github.event.release.prerelease
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CARGO_TERM_COLOR: always
+      RELEASE_TAG: ${{ github.event.release.tag_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - name: Select stable Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+      - name: Validate crate, tag, main ancestry, notes, and registry dependencies
+        id: release
+        run: uv run --offline --no-project scripts/release_policy.py preflight --tag "$RELEASE_TAG" --github-output "$GITHUB_OUTPUT"
+      - name: Verify the selected package against real registry dependencies
+        env:
+          PACKAGE: ${{ steps.release.outputs.crate }}
+        run: cargo publish --dry-run --locked -p "$PACKAGE"
+      - name: Publish the selected crate
+        env:
+          PACKAGE: ${{ steps.release.outputs.crate }}
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          if [ -z "$CARGO_REGISTRY_TOKEN" ]; then
+            echo "CARGO_REGISTRY_TOKEN is not configured for this publication job." >&2
+            exit 1
+          fi
+          cargo publish --locked -p "$PACKAGE"
+      - name: Wait for the published archive checksum in the crates.io index
+        env:
+          PACKAGE: ${{ steps.release.outputs.crate }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: >-
+          uv run --offline --no-project scripts/release_policy.py
+          wait-index "$PACKAGE" "$VERSION" --timeout 600
+          --archive "target/package/$PACKAGE-$VERSION.crate"

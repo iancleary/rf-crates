@@ -1,80 +1,161 @@
-# Release policy and repository cutover
+# Independent crate releases
 
-## Current boundary
+## Mental model
 
-Development, numerical checks, package creation, and package verification work
-locally. Automated publication is deliberately **not enabled** during migration.
-The root `just cut-release` and imported member release scripts exit nonzero
-before modifying files or contacting a forge. An imported `vX.Y.Z` runner cannot
-select a crate safely in a four-package repository.
+There are four packages, not one workspace version. Each release has its own
+manifest version, notes, tag, GitHub release, and crates.io artifact:
+`rfconversions-v0.8.0`, for example. GitHub's repository-wide “latest release”
+label is deliberately not assigned because four independent version lines do
+not have a useful shared latest version.
 
-The root GitHub Actions workflow only validates code. It has read-only repository
-permissions, no release trigger, and no registry token. Nested source workflows
-are retained as history-bearing files; GitHub does not execute them from
-`crates/*/.github/workflows`.
+Preparation and publication are separate:
 
-## Version and package rules
+1. [The workspace helper](../scripts/release_policy.py) prepares one package's
+   version, any corresponding root workspace requirement, and `Cargo.lock`.
+   It defaults to no implicit action: select `--dry-run` or `--apply`.
+2. Review, check, commit, and push those files to `main` with package-specific
+   [release notes](../release/notes/). No package has been published yet.
+3. The unchanged [maintained release runner](../scripts/release.py) executes the
+   selected [crate contract](../release/). It checks a clean checkout, the exact
+   version, public main ancestry, registry dependencies, and release notes;
+   runs all local checks; then creates the qualified tag and GitHub release.
+4. That GitHub release triggers [the publication workflow](../.github/workflows/release.yml).
+   It calls the same [workspace verification workflow](../.github/workflows/ci.yml)
+   used by pull requests, without passing registry credentials.
+5. Only after verification succeeds does a separate job dry-run and publish
+   **one** package. It then waits up to ten minutes for its non-yanked index
+   entry and verifies the published checksum against the uploaded archive.
 
-- Keep the four package names and independent SemVer versions. A monorepo does
-  not require a shared version or simultaneous releases.
-- Imported versions identify the starting point, not permission to overwrite
-  those versions on crates.io. Choose new versions before publishing changes.
-- Update a member manifest and relevant root workspace dependency requirements
-  together, then regenerate the root lockfile with Cargo.
-- Preserve crate licenses and registry-compatible version requirements on local
-  path dependencies. Do not substitute Git-only dependencies for publication.
-- Future tags must identify the crate, for example `rfconversions-v0.8.0`; the
-  example is a naming proposal, not an approved next version.
+A GitHub release is the publishing request, **not proof that crates.io accepted
+it**. Treat a release as complete only after the publication workflow succeeds
+and the exact package version is visible in the index.
 
-Dependency publication order, when the corresponding packages changed:
+## Dependency order
 
-1. `rfconversions`
-2. `touchstone` and `linkbudget`, after their required rfconversions version exists
-3. `gainlineup`, after its required rfconversions and touchstone versions exist
+Publish dependencies before consumers:
 
-The numerical PRs add an API consumed by gainlineup. Its eventual published
-rfconversions requirement must name a version containing that API. A successful
-workspace package check does not prove that version already exists on crates.io.
-
-## Verification before a release
-
-From a clean committed checkout:
-
-```bash
-CARGO_NET_OFFLINE=true just ci
+```text
+rfconversions → touchstone → gainlineup
+             └────────────→ gainlineup
+             └────────────→ linkbudget
 ```
 
-This preserves format, all-target/all-feature Clippy, all-feature and library-only
-tests, independent numerical comparisons, warnings-denied documentation, package
-verification, and release builds. `cargo package --workspace --locked` stages
-local packages in Cargo's temporary registry; it does not publish them.
+`linkbudget` can follow any time after its required rfconversions version is
+available. A simple serial order is rfconversions, touchstone, gainlineup,
+linkbudget. Wait for successful publication and index visibility between them;
+there is no arbitrary fixed sleep. Publication workflows share one concurrency
+group and never intentionally cancel an active publication.
 
-Package-manifest MSRV claims remain unchanged. Workspace verification uses the
-installed modern Rust toolchain and does not independently certify every older
-MSRV. Validate the supported compiler matrix before making a release claim.
+The root workspace requirements must name a version that contains the API a
+consumer uses. In particular, gainlineup's stable noise addition needs
+rfconversions 0.8 or later. Workspace packaging stages local dependencies in
+Cargo's temporary registry. It **does not** establish real registry availability;
+the selected-package `cargo publish --dry-run` does that separately.
 
-## Pending, separately authorized cutover
+## Prerequisites and authorization
 
-1. Confirm the GitHub owner/repository name and public visibility.
-2. Review the imported history and current tree for public suitability. No private
-   application repository was used as an import source.
-3. Create the GitHub repository, set `origin`, and publish the reviewed history.
-4. Update each package's homepage/repository metadata to the confirmed monorepo
-   destination. Until then it intentionally points to the original repository.
-5. Configure branch protection and inspect a real GitHub CI run. Local execution
-   does not verify hosted runner behavior.
-6. Decide whether to merge or close the original rfconversions PRs with a migration
-   explanation. Local subtree integration has not changed those PR states.
-7. Port one release runner to crate-specific versions, notes, tags, clean-tree
-   checks, and dependency order. Require explicit version and crate selection;
-   dry-run must not publish. Reuse maintained release tooling instead of adding
-   a second competing release framework.
-8. Configure registry credentials only after the publication path is approved.
-   Validate the runner in an isolated repository before enabling it.
-9. Redirect or archive the old repositories only after their outstanding work is
-   accounted for. Other open PRs were not silently incorporated.
+- A clean `main` checkout with the approved HTTPS `origin`, current remote refs,
+  installed stable Rust, rustfmt, Clippy, `just`, `uv`, and authenticated `gh`.
+- Explicit authorization for the selected package releases. No command in a
+  document is standing permission to publish future releases.
+- `CARGO_REGISTRY_TOKEN` stored as a GitHub Actions secret. One token can serve
+  these four existing crates: use `publish-update`, restricted to their names.
+  Do not enable `publish-new` merely for these version updates. Ownership and
+  token permissions are ultimately verified by a real authorized upload.
+- The token appears only in the publish step, never ordinary CI or command-line
+  arguments. Dry-run/package checks do not prove token authorization.
+- Exact stable `X.Y.Z` versions; prerelease publication is not supported by this
+  contract. Historical member release scripts remain disabled.
 
-Do not run `cargo publish`, push tags, close PRs, or archive repositories merely
-to complete local workspace setup. If a migration correction is needed before
-cutover, make another local commit. The original checkouts and remote histories
-remain unchanged, so there is no destructive rollback to perform.
+Branch protection and a protected publishing environment are recommended
+additional controls, but are not assumed to have been configured. The workflow
+validates approved repository identity and that a release commit belongs to
+public `main` before it exposes the registry token.
+
+## Procedure
+
+Example for an explicitly authorized minor rfconversions release:
+
+```bash
+just prepare-release rfconversions --bump minor --dry-run
+just prepare-release rfconversions --bump minor --apply
+# Review Cargo.toml, the member manifest, Cargo.lock, and release notes.
+# Update release/notes/rfconversions.md to start with '# rfconversions X.Y.Z'.
+# Commit the reviewed preparation, run just ci, and push it to origin/main.
+
+uv run --offline --no-project scripts/release.py check \
+  --config release/rfconversions.toml --json
+uv run --offline --no-project scripts/release.py plan \
+  --config release/rfconversions.toml --version X.Y.Z --json
+```
+
+Use the exact `version`, `target_commit`, and `config_sha256` from that plan:
+
+```bash
+just cut-release rfconversions --dry-run --version X.Y.Z \
+  --expected-head COMMIT --expected-config SHA256 --json
+just cut-release rfconversions --apply --version X.Y.Z \
+  --expected-head COMMIT --expected-config SHA256 --json
+
+gh run list --workflow release.yml --repo iancleary/rf-crates
+gh run watch RUN_ID --exit-status --repo iancleary/rf-crates
+uv run --offline --no-project scripts/release_policy.py \
+  wait-index rfconversions X.Y.Z --timeout 600
+```
+
+The tag runner does not bump manifests. This deliberate split prevents an
+individual-Cargo-manifest runner from forgetting root workspace requirements.
+The preparation helper uses Cargo's offline resolver to update the existing
+lockfile while retaining unrelated locked dependencies. If a required cache
+entry is absent, stop and fetch the required dependencies through the normal
+Cargo workflow rather than substituting another dependency or bypassing checks.
+
+Repeat the whole procedure with the next package only after the previous
+publication is confirmed. For later releases, update the appropriate notes;
+the initially checked-in minor-release notes are not reusable claims about
+future changes.
+
+## Verification and operational limits
+
+The shared gate preserves workspace membership, formatting, all-target and
+all-feature Clippy, all-feature tests, library-only tests, independent numerical
+comparisons, warnings-denied documentation, all four package archives, and
+release builds. The publisher additionally verifies the selected artifact
+against real crates.io dependencies, rather than accepting only a local path
+build.
+
+Minimum-Rust-version metadata is preserved, but stable-toolchain CI does not
+certify every declared historical compiler. Do not describe these releases as
+having passed an MSRV matrix. Original upstream PRs and repository settings are
+unchanged; this workflow does not close PRs or archive old repositories.
+
+The vendored runner is unchanged from the release-skills revision recorded in
+each contract, with its SHA-256 checked on every config load. Keep workspace
+policy in `release_policy.py`, not in a divergent fork of the maintained runner.
+
+## Failure and recovery
+
+- **Preparation fails:** original manifest and lockfile bytes are restored. A
+  successful preparation only modifies local files; inspect or revise them
+  before committing. Never discard unrelated work.
+- **Checks fail:** no release should proceed. Diagnose, repair, and rerun the
+  failed gate. An unavailable registry dependency means publish or verify the
+  dependency first, not loosen its requirement to an older incompatible API.
+- **Tag exists but GitHub release creation failed:** inspect its exact commit;
+  use the maintained runner's explicit `--resume --version X.Y.Z
+  --expected-head TAG_COMMIT` flow from a clean checkout after reviewing the
+  remote tag. Do not move or recreate a public tag.
+- **GitHub release exists but the publication job failed:** inspect
+  `gh run view RUN_ID --log-failed`. Confirm whether crates.io received the
+  package before deciding to retry. If it is absent, an explicitly authorized
+  failed-job rerun can repeat the guards and publish step.
+- **Upload succeeded but the index wait failed:** do not publish again. Rerun
+  only `wait-index`, inspect the uploaded archive checksum in the workflow, and
+  resolve the incomplete workflow record before the next release. An existing
+  registry version intentionally blocks blind publication retries.
+- **Bad published package:** crates.io versions are immutable. A correction
+  requires a new version; yanking or changing public metadata requires separate
+  authorization. Local resets cannot undo publication.
+
+The reusable execution checklist lives in
+[the crate release skill](../.agents/skills/release-rf-crate/SKILL.md).

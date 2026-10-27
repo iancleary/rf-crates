@@ -42,7 +42,20 @@ check: workspace-check fmt-check lint test test-library numerics doc-check packa
 
 ci: check build
 
-# Publication remains disabled until the GitHub and registry cutover is approved.
-cut-release *args:
-    @echo "Release publication is disabled during migration. Read docs/releases.md." >&2
-    @exit 2
+# Prepare one package version and its workspace requirements; explicit mode required.
+[positional-arguments]
+prepare-release crate *args:
+    uv run --offline --no-project scripts/release_policy.py prepare "$@"
+
+# Create a crate-qualified GitHub release after all checks. Explicit --version required.
+[positional-arguments]
+cut-release crate *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    crate="$1"
+    shift
+    case "$crate" in
+      rfconversions|touchstone|gainlineup|linkbudget) ;;
+      *) echo "Select one of the four workspace crates." >&2; exit 2 ;;
+    esac
+    exec uv run --offline --no-project scripts/release.py run --config "release/$crate.toml" "$@"

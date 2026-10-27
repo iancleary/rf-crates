@@ -40,10 +40,12 @@ verifies the package archives together through Cargo's temporary registry.
 
 - [Workspace architecture, history, and migration decisions](docs/workspace.md)
 - [rfconversions PR review and numerical evidence](docs/rfconversions-review.md)
-- [Release policy and pending GitHub cutover](docs/releases.md)
+- [Independent crate release procedure and recovery](docs/releases.md)
+- [Reusable crate release checklist](.agents/skills/release-rf-crate/SKILL.md)
 - [Reusable workspace verification procedure](.agents/skills/verify-rf-workspace/SKILL.md)
 
-The local monorepo preserves source histories and the reviewed `rfconversions`
-PR commits. It has not changed upstream repository settings, merged upstream
-PRs, published crates, or activated a new GitHub repository. Release publication
-is blocked pending the cutover described above.
+The public monorepo preserves source histories and the reviewed `rfconversions`
+PR commits. Upstream PRs and original repository settings remain unchanged.
+Ordinary CI never publishes. An explicitly authorized crate-qualified GitHub
+release starts a separate guarded publication workflow; see the release guide
+for dependency ordering, registry verification, and recovery boundaries.
