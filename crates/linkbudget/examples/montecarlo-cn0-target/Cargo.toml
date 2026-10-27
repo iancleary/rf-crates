@@ -10,3 +10,6 @@ montycarlo = "0.1.0"
 rand = "0.8"
 
 linkbudget = { path = "../.." }
+
+[workspace]
+resolver = "2"
