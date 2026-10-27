@@ -27,7 +27,7 @@ start with the [calculation guides](docs/README.md).
 
 ```toml
 [dependencies]
-linkbudget = "0.7.0"
+linkbudget = "0.8"
 ```
 
 The receiver API below is available in 0.7.0. For the previous 0.6.5 API,

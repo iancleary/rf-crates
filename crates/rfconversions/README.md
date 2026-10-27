@@ -26,7 +26,7 @@ quantities.
 
 ```toml
 [dependencies]
-rfconversions = "0.7.5"
+rfconversions = "0.8"
 ```
 
 ## 1. Power Conversions

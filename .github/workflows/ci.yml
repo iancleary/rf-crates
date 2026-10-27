@@ -10,8 +10,8 @@ on:
         default: ''
   push:
     branches: [main]
+  # Stacked proposals need the same checks before their predecessor reaches main.
   pull_request:
-    branches: [main]
 
 permissions:
   contents: read

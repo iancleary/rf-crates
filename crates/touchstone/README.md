@@ -348,9 +348,9 @@ Success! Opening: file:///Users/iancleary/Development/touchstone/files/ntwk3.s2p
 
 > Works on Windows, macOS, and Linux file systems!
 
-[![HTML file created for ntwk3.s2p by running `touchstone files/ntwk3.s2p` in the root of this directory](https://github.com/iancleary/touchstone/blob/main/examples/ntwk3.s2p.html.png?raw=true)](https://github.com/iancleary/touchstone/tree/main/examples/ntwk3.s2p.html)
+[![HTML file created for ntwk3.s2p by running `touchstone files/ntwk3.s2p` in the root of this directory](https://github.com/iancleary/rf-crates/blob/main/crates/touchstone/examples/ntwk3.s2p.html.png?raw=true)](https://github.com/iancleary/rf-crates/blob/main/crates/touchstone/examples/ntwk3.s2p.html)
 
-You can view the HTML source file itself here: [examples/ntwk3.s2p.html](https://github.com/iancleary/touchstone/tree/main/examples/ntwk3.s2p.html).
+You can view the HTML source file itself here: [examples/ntwk3.s2p.html](https://github.com/iancleary/rf-crates/blob/main/crates/touchstone/examples/ntwk3.s2p.html).
 
 ### Directory Path
 
@@ -372,9 +372,9 @@ Found network file: "files/ntwk3.s2p"
 Plot HTML generated at files/combined_plot.html
 ```
 
-[![HTML file created for the files directory by running `touchstone files/` in the root of this directory](https://github.com/iancleary/touchstone/blob/main/examples/combined_plot.html.png?raw=true)](https://github.com/iancleary/touchstone/tree/main/examples/combined_plot.html)
+[![HTML file created for the files directory by running `touchstone files/` in the root of this directory](https://github.com/iancleary/rf-crates/blob/main/crates/touchstone/examples/combined_plot.html.png?raw=true)](https://github.com/iancleary/rf-crates/blob/main/crates/touchstone/examples/combined_plot.html)
 
-You can view the HTML source file itself here: [examples/combined_plot.html](https://github.com/iancleary/touchstone/tree/main/examples/combined_plot.html).
+You can view the HTML source file itself here: [examples/combined_plot.html](https://github.com/iancleary/rf-crates/blob/main/crates/touchstone/examples/combined_plot.html).
 
 ### Cascade Command
 
@@ -494,4 +494,4 @@ recognize it. See the [support table](docs/support.md) before using this extensi
 
 * [Touchstone Wikipedia entry](https://en.wikipedia.org/wiki/Touchstone_file)
 * [Touchstone File Format Specification Version 2.1](https://ibis.org/touchstone_ver2.1/touchstone_ver2_1.pdf)
-  * Local Version of [Touchstone File Format Specification Version 2.1](https://github.com/iancleary/touchstone/blob/main//docs/touchstone_ver2_1.pdf)
+  * Local Version of [Touchstone File Format Specification Version 2.1](https://github.com/iancleary/rf-crates/blob/main/crates/touchstone/docs/touchstone_ver2_1.pdf)

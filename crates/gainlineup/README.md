@@ -29,7 +29,7 @@ fields are output-referred dBm values.
 
 ```toml
 [dependencies]
-gainlineup = "0.23.0"
+gainlineup = "0.24"
 ```
 
 ## Quick Start
@@ -49,7 +49,7 @@ let input = Input {
 };
 ```
 
-> [Full example →](https://github.com/iancleary/gainlineup/blob/main/tests/readme_01_input_signal.rs)
+> [Full example →](https://github.com/iancleary/rf-crates/blob/main/crates/gainlineup/tests/readme_01_input_signal.rs)
 
 ### 2. Define Your Blocks
 
@@ -83,7 +83,7 @@ let if_amp = Block {
 };
 ```
 
-> [Full example →](https://github.com/iancleary/gainlineup/blob/main/tests/readme_02_blocks.rs)
+> [Full example →](https://github.com/iancleary/rf-crates/blob/main/crates/gainlineup/tests/readme_02_blocks.rs)
 
 ### 3. Run the Cascade
 
@@ -140,7 +140,7 @@ println!("\nCascade: Gain={:.1} dB, NF={:.2} dB, SNR={:.1} dB",
     output.signal_to_noise_ratio_db());
 ```
 
-> [Full example →](https://github.com/iancleary/gainlineup/blob/main/tests/readme_03_cascade.rs)
+> [Full example →](https://github.com/iancleary/rf-crates/blob/main/crates/gainlineup/tests/readme_03_cascade.rs)
 
 ### 4. What Gets Cascaded
 
@@ -197,7 +197,7 @@ assert_eq!(pa.output_power(0.0), 21.0);    // 0 + 30 = 30, clamps to 21
 assert_eq!(pa.power_gain(0.0), 21.0);      // reduced gain
 ```
 
-> [Full example →](https://github.com/iancleary/gainlineup/blob/main/tests/readme_04_compression.rs)
+> [Full example →](https://github.com/iancleary/rf-crates/blob/main/crates/gainlineup/tests/readme_04_compression.rs)
 
 ---
 
@@ -225,7 +225,7 @@ let dr_in = lna.input_dynamic_range_db(1e6).unwrap();
 println!("Input dynamic range: {:.1} dB", dr_in);
 ```
 
-> [Full example →](https://github.com/iancleary/gainlineup/blob/main/tests/readme_05_dynamic_range.rs)
+> [Full example →](https://github.com/iancleary/rf-crates/blob/main/crates/gainlineup/tests/readme_05_dynamic_range.rs)
 
 Returns `None` when P1dB is not set (linear block, infinite dynamic range).
 
@@ -261,7 +261,7 @@ for (pin, gain) in &gc {
 }
 ```
 
-> [Full example →](https://github.com/iancleary/gainlineup/blob/main/tests/readme_06_am_am_single_block.rs)
+> [Full example →](https://github.com/iancleary/rf-crates/blob/main/crates/gainlineup/tests/readme_06_am_am_single_block.rs)
 
 ### Full Cascade
 
@@ -307,7 +307,7 @@ for (pin, gain) in &gc {
 }
 ```
 
-> [Full example →](https://github.com/iancleary/gainlineup/blob/main/tests/readme_07_am_am_cascade.rs)
+> [Full example →](https://github.com/iancleary/rf-crates/blob/main/crates/gainlineup/tests/readme_07_am_am_cascade.rs)
 
 ---
 
@@ -342,7 +342,7 @@ for pt in &sweep {
 }
 ```
 
-> [Full example →](https://github.com/iancleary/gainlineup/blob/main/tests/readme_08_imd3.rs)
+> [Full example →](https://github.com/iancleary/rf-crates/blob/main/crates/gainlineup/tests/readme_08_imd3.rs)
 
 **Key relationships:**
 - `IM3_out = 3 × Pout - 2 × OIP3` (all dBm)
@@ -384,7 +384,7 @@ if let Some(summary) = node.dynamic_range_summary() {
 }
 ```
 
-> [Full example →](https://github.com/iancleary/gainlineup/blob/main/tests/readme_09_node_dynamic_range.rs)
+> [Full example →](https://github.com/iancleary/rf-crates/blob/main/crates/gainlineup/tests/readme_09_node_dynamic_range.rs)
 
 Returns `None` when the node has no P1dB (e.g., a passive stage without a compression spec).
 
@@ -440,7 +440,7 @@ if let Some(evm) = model.evm_from_am_pm(-5.0) {
 }
 ```
 
-> [Full example →](https://github.com/iancleary/gainlineup/blob/main/tests/readme_10_amplifier_model.rs)
+> [Full example →](https://github.com/iancleary/rf-crates/blob/main/crates/gainlineup/tests/readme_10_amplifier_model.rs)
 
 ---
 
@@ -499,7 +499,7 @@ For brevity, you can use short field names. The unit-suffixed names are recommen
 
 The CLI generates an HTML visualization of the cascade:
 
-[![HTML cascade output](https://github.com/iancleary/gainlineup/blob/main/files/wideband.toml.html.png?raw=true)](https://github.com/iancleary/gainlineup/tree/main/files/wideband.toml.html)
+[![HTML cascade output](https://github.com/iancleary/rf-crates/blob/main/crates/gainlineup/files/wideband.toml.html.png?raw=true)](https://github.com/iancleary/rf-crates/blob/main/crates/gainlineup/files/wideband.toml.html)
 
 ---
 

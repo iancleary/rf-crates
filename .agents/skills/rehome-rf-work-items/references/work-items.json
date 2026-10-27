@@ -1,0 +1,285 @@
+{
+  "repository": "iancleary/rf-crates",
+  "labels": {
+    "crate:rfconversions": [
+      "1D76DB",
+      "Owned by the rfconversions scalar RF crate"
+    ],
+    "crate:touchstone": [
+      "1D76DB",
+      "Owned by the touchstone network-data crate"
+    ],
+    "crate:gainlineup": [
+      "1D76DB",
+      "Owned by the gainlineup cascade-analysis crate"
+    ],
+    "crate:linkbudget": [
+      "1D76DB",
+      "Owned by the linkbudget radio-link crate"
+    ],
+    "area:repository": [
+      "5319E7",
+      "Shared repository infrastructure and governance"
+    ],
+    "type:tracking": [
+      "7057FF",
+      "Decision and child-issue tracker; not a single implementation assignment"
+    ],
+    "type:task": [
+      "0E8A16",
+      "One bounded outcome with explicit acceptance criteria"
+    ],
+    "status:needs-scoping": [
+      "FBCA04",
+      "Recheck historical findings and define bounded tasks before implementation"
+    ],
+    "status:review": [
+      "C2E0C6",
+      "Bounded proposal awaiting technical review; not approved for merge"
+    ],
+    "status:blocked": [
+      "D93F0B",
+      "Blocked by an explicitly linked predecessor"
+    ],
+    "migration:imported": [
+      "BFDADC",
+      "Transferred work from an original public RF crate repository"
+    ]
+  },
+  "trackers": [
+    {
+      "crate": "rfconversions",
+      "source_number": 34,
+      "number": 1,
+      "title": "rfconversions 1.0 readiness: tracking and scope decisions"
+    },
+    {
+      "crate": "touchstone",
+      "source_number": 87,
+      "number": 2,
+      "title": "touchstone 1.0 readiness: tracking and scope decisions"
+    },
+    {
+      "crate": "gainlineup",
+      "source_number": 78,
+      "number": 3,
+      "title": "gainlineup 1.0 readiness: tracking and scope decisions"
+    },
+    {
+      "crate": "gainlineup",
+      "source_number": 79,
+      "number": 4,
+      "title": "gainlineup modeling extensions: tracking and acceptance decisions"
+    },
+    {
+      "crate": "linkbudget",
+      "source_number": 84,
+      "number": 5,
+      "title": "linkbudget modeling extensions: tracking and acceptance decisions"
+    }
+  ],
+  "proposals": [
+    {
+      "crate": "touchstone",
+      "source_number": 88,
+      "source_commit": "8b93ba1bc92f1573b9fe75e3838885c032e3f5e0",
+      "tracker": 87,
+      "predecessor": null,
+      "branch": "migration/touchstone-numerical-solves",
+      "title": "touchstone: review pivoted conversion solves and error diagnostics",
+      "category": "enhancement",
+      "issue": 6,
+      "pull": null
+    },
+    {
+      "crate": "touchstone",
+      "source_number": 89,
+      "source_commit": "cea65babad49ccbf2694ff8a364c8ec90fccb34a",
+      "tracker": 87,
+      "predecessor": null,
+      "branch": "migration/touchstone-sampled-quality",
+      "title": "touchstone: review sampled passivity and symmetry reporting",
+      "category": "enhancement",
+      "issue": 7,
+      "pull": null
+    },
+    {
+      "crate": "touchstone",
+      "source_number": 90,
+      "source_commit": "ce1765cb94e76b524d147e5902704ef7badbb47d",
+      "tracker": 87,
+      "predecessor": null,
+      "branch": "migration/touchstone-mixed-mode",
+      "title": "touchstone: review checked differential and common-mode views",
+      "category": "enhancement",
+      "issue": 8,
+      "pull": null
+    },
+    {
+      "crate": "touchstone",
+      "source_number": 91,
+      "source_commit": "2a1bd3f8a908c6a1b4d3ea8c41a38a2dd0bbdf6b",
+      "tracker": 87,
+      "predecessor": 88,
+      "branch": "migration/touchstone-real-renormalization",
+      "title": "touchstone: review common-real-reference renormalization",
+      "category": "enhancement",
+      "issue": 9,
+      "pull": null
+    },
+    {
+      "crate": "touchstone",
+      "source_number": 92,
+      "source_commit": "9b2aedbc2f06df8e8b084662275c92d021c3b83e",
+      "tracker": 87,
+      "predecessor": 88,
+      "branch": "migration/touchstone-port-connection",
+      "title": "touchstone: review arbitrary single-pair port connections",
+      "category": "enhancement",
+      "issue": 10,
+      "pull": null
+    },
+    {
+      "crate": "touchstone",
+      "source_number": 93,
+      "source_commit": "a3b88a6fb1ff858d59ed5814ab13759a4010b620",
+      "tracker": 87,
+      "predecessor": null,
+      "branch": "migration/touchstone-vector-fitting",
+      "title": "touchstone: review bounded experimental vector fitting",
+      "category": "enhancement",
+      "issue": 11,
+      "pull": null
+    },
+    {
+      "crate": "gainlineup",
+      "source_number": 80,
+      "source_commit": "cadab84d27fcd3f264fa103b47f2b7225e6c4091",
+      "tracker": 79,
+      "predecessor": null,
+      "branch": "migration/gainlineup-literature-scope",
+      "title": "gainlineup: review literature-backed modeling scope",
+      "category": "documentation",
+      "issue": 12,
+      "pull": null
+    },
+    {
+      "crate": "gainlineup",
+      "source_number": 81,
+      "source_commit": "5b76f277d97b9903a13e6ff69d9963428588caf2",
+      "tracker": 79,
+      "predecessor": 80,
+      "branch": "migration/gainlineup-spectral-noise",
+      "title": "gainlineup: review finite-band spectral noise integration",
+      "category": "enhancement",
+      "issue": 13,
+      "pull": null
+    },
+    {
+      "crate": "gainlineup",
+      "source_number": 82,
+      "source_commit": "ff58ecf020738fe569d30b64f8ee4d00c41128cb",
+      "tracker": 79,
+      "predecessor": 81,
+      "branch": "migration/gainlineup-passive-temperature",
+      "title": "gainlineup: review temperature-aware passive loss",
+      "category": "enhancement",
+      "issue": 14,
+      "pull": null
+    },
+    {
+      "crate": "linkbudget",
+      "source_number": 85,
+      "source_commit": "8b16b0d4907778d510557e863ec3b996f96c191c",
+      "tracker": 84,
+      "predecessor": null,
+      "branch": "migration/linkbudget-performance-profiles",
+      "title": "linkbudget: review sourced DVB-S2 performance profiles",
+      "category": "enhancement",
+      "issue": 15,
+      "pull": null
+    },
+    {
+      "crate": "linkbudget",
+      "source_number": 86,
+      "source_commit": "d825c67c4ec5ae6f0d6ffbd61745ffdae867a186",
+      "tracker": 84,
+      "predecessor": 85,
+      "branch": "migration/linkbudget-atmospheric-noise",
+      "title": "linkbudget: review atmospheric attenuation and sky noise",
+      "category": "enhancement",
+      "issue": 16,
+      "pull": null
+    },
+    {
+      "crate": "linkbudget",
+      "source_number": 87,
+      "source_commit": "1bf76fb81fcf89eb945b5c8e2483018f83b686d1",
+      "tracker": 84,
+      "predecessor": 86,
+      "branch": "migration/linkbudget-rain-attenuation",
+      "title": "linkbudget: review offline annual rain attenuation",
+      "category": "enhancement",
+      "issue": 17,
+      "pull": null
+    },
+    {
+      "crate": "linkbudget",
+      "source_number": 88,
+      "source_commit": "8a3c2fb102844eb8c061f19918033ab2e7355ce6",
+      "tracker": 84,
+      "predecessor": 87,
+      "branch": "migration/linkbudget-margin-uncertainty",
+      "title": "linkbudget: review conditional margin uncertainty reporting",
+      "category": "enhancement",
+      "issue": 18,
+      "pull": null
+    },
+    {
+      "crate": "linkbudget",
+      "source_number": 89,
+      "source_commit": "f1a6c751b00e706cd790735bb1fecd2876f8e5ed",
+      "tracker": 84,
+      "predecessor": 88,
+      "branch": "migration/linkbudget-gaussian-tails",
+      "title": "linkbudget: review accurate Gaussian tails and log-BER",
+      "category": "bug",
+      "issue": 19,
+      "pull": null
+    },
+    {
+      "crate": "linkbudget",
+      "source_number": 90,
+      "source_commit": "bbd2bcd6f2c9b2a7cd9d0892d3920627fe1a8e69",
+      "tracker": 84,
+      "predecessor": 89,
+      "branch": "migration/linkbudget-finite-blocklength",
+      "title": "linkbudget: review finite-blocklength AWGN planning",
+      "category": "enhancement",
+      "issue": 20,
+      "pull": null
+    }
+  ],
+  "integrated": [
+    {
+      "crate": "rfconversions",
+      "source_number": 36,
+      "source_commit": "ba03edcabd9cc647a83aadeab3da56d4a792195e"
+    },
+    {
+      "crate": "rfconversions",
+      "source_number": 37,
+      "source_commit": "1a492febe14f307fb92b7d69a08edfab1f71e7e8"
+    },
+    {
+      "crate": "rfconversions",
+      "source_number": 38,
+      "source_commit": "5b7bb28d52d3d2995fddcc770a31228b8f3a6927"
+    },
+    {
+      "crate": "rfconversions",
+      "source_number": 39,
+      "source_commit": "1fe4d852d1d16e926dfb6071f4590da7a79b5fee"
+    }
+  ]
+}

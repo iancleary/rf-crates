@@ -39,6 +39,7 @@ verifies the package archives together through Cargo's temporary registry.
 ## Guides
 
 - [Workspace architecture, history, and migration decisions](docs/workspace.md)
+- [Repository handoff and bounded issue ownership](docs/repository-migration.md)
 - [rfconversions PR review and numerical evidence](docs/rfconversions-review.md)
 - [Independent crate release procedure and recovery](docs/releases.md)
 - [Reusable crate release checklist](.agents/skills/release-rf-crate/SKILL.md)

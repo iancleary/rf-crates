@@ -36,7 +36,7 @@ packaged with the owning crate's literature-review skill.
    only the compile result.
 6. Review the diff and report failures and unverified platforms/MSRVs. A local
    CI-equivalent run is not proof that GitHub Actions has run.
-7. Follow `docs/releases.md` for pending cutover and release boundaries. Do not
+7. Follow `docs/releases.md` for independent release and recovery boundaries. Do not
    publish, merge upstream PRs, archive repositories, or enable credentials as
    a side effect of verification.
 
