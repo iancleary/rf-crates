@@ -9,8 +9,8 @@ See [workspace provenance](workspace.md) and [release operations](releases.md).
 
 - [ ] Transfer the five open issues using GitHub's native transfer operation,
   preserving authorship and discussion history.
-- [ ] Preserve fifteen pending PR heads and dependency stacks in monorepo draft
-  PRs. Each proposal has one bounded implementation issue and explicit acceptance.
+- [ ] Preserve fifteen pending PR heads and dependency stacks in unmerged monorepo
+  PRs, retaining review-ready status after migration verification. Each proposal has one bounded implementation issue and explicit acceptance.
 - [ ] Verify the four integrated rfconversions PR heads are ancestors of main,
   then close their original PRs with the monorepo/release evidence.
 - [ ] Verify every replacement before closing its original PR. Preserve original
@@ -65,7 +65,7 @@ for all PR target branches; publication remains confined to approved releases.
 
 Native issue transfer preserves the issue record. PRs cannot be transferred in
 that manner: preserve the original commits through a subtree merge, adapt only
-workspace integration, and open a linked draft replacement. Never close a source
+workspace integration, and open a linked review-ready replacement. Never close a source
 PR merely because a branch was pushed. Verify the replacement URL, intended
 base, source-head ancestry, changed-file boundary, and local check results first.
 
