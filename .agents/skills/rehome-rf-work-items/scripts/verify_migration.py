@@ -70,16 +70,17 @@ def verify(inventory: dict, phase: str) -> dict:
         base = predecessor["branch"] if predecessor else "main"
         require(pull["head"]["ref"] == proposal["branch"], f"wrong proposal branch: {pull['html_url']}")
         require(pull["base"]["ref"] == base, f"lost dependency stack: {pull['html_url']}")
-        require(pull["draft"] and not pull["merged"], f"proposal is not an unmerged draft: {pull['html_url']}")
+        require(not pull["draft"] and not pull["merged"], f"proposal is not unmerged and review-ready: {pull['html_url']}")
         require(f"Closes #{number}" in pull["body"], f"PR does not own its bounded task: {pull['html_url']}")
-        require(proposal["source_commit"] in pull["body"], f"PR source provenance missing: {pull['html_url']}")
+        source_url = f"https://github.com/iancleary/{crate}/pull/{proposal['source_number']}"
+        require(source_url in pull["body"], f"PR source provenance missing: {pull['html_url']}")
         comparison = api(f"{prefix}/compare/{proposal['source_commit']}...{pull['head']['sha']}")
         require(comparison["status"] in ("ahead", "identical"), f"source head not preserved: {pull['html_url']}")
         files = api(f"{prefix}/pulls/{proposal['pull']}/files?per_page=100")
         require(0 < len(files) < 100, f"empty diff or file audit needs pagination: {pull['html_url']}")
         require(all(entry["filename"].startswith(f"crates/{crate}/") or entry["filename"] == "Cargo.lock"
                     for entry in files), f"proposal exceeds crate boundary: {pull['html_url']}")
-        require("## Monorepo verification" in pull["body"], f"verification record absent: {pull['html_url']}")
+        require("## Verification" in pull["body"], f"verification record absent: {pull['html_url']}")
         if phase == "complete":
             original = api(f"repos/iancleary/{crate}/pulls/{proposal['source_number']}")
             require(original["state"] == "closed" and not original["merged"], f"source PR not retired: {original['html_url']}")

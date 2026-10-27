@@ -26,7 +26,7 @@ Migration does not authorize feature merges, releases, or archival.
 5. Verify source-head ancestry, the changed-file boundary, and the actual source
    content. Run full workspace CI and relevant retained workflows. Record new
    evidence separately from the original author's historical claims.
-6. Push a verified branch and create a draft PR with the correct base, labels,
+6. Push a verified branch and create a review-ready PR with the correct base, labels,
    bounded issue, source URL/SHA, and verification. Read back the actual PR before
    closing the original with a destination link. Integrated proposals require
    source-head ancestry and release evidence instead of duplicate PRs.
