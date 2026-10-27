@@ -3,6 +3,21 @@ name: Publish RF crate
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing crate-qualified GitHub release tag
+        required: true
+        type: string
+      expected_commit:
+        description: Exact 40-character source commit; the public tag must not move
+        required: true
+        type: string
+      publish:
+        description: Publish after verification (false performs a recovery dry-run)
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -12,21 +27,62 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  resolve:
+    if: >-
+      github.repository == 'iancleary/rf-crates' &&
+      ((github.event_name == 'release' && !github.event.release.prerelease) ||
+       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      source_commit: ${{ steps.source.outputs.source_commit }}
+      tag: ${{ steps.source.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Pin an existing stable release to its expected main-branch commit
+        id: source
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
+          EXPECTED_COMMIT: ${{ inputs.expected_commit || github.sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^(rfconversions|touchstone|gainlineup|linkbudget)-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Select an existing stable release for one approved crate." >&2
+            exit 1
+          fi
+          if [[ ! "$EXPECTED_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "An exact 40-character expected commit is required." >&2
+            exit 1
+          fi
+          source_commit=$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")
+          test "$source_commit" = "$EXPECTED_COMMIT"
+          git merge-base --is-ancestor "$source_commit" origin/main
+          gh release view "$RELEASE_TAG" --repo iancleary/rf-crates \
+            --json tagName,isDraft,isPrerelease |
+            jq -e --arg tag "$RELEASE_TAG" \
+              '.tagName == $tag and .isDraft == false and .isPrerelease == false'
+          printf 'source_commit=%s\ntag=%s\n' "$source_commit" "$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+
   verify:
-    if: github.repository == 'iancleary/rf-crates' && !github.event.release.prerelease
+    needs: resolve
     uses: ./.github/workflows/ci.yml
+    with:
+      source_ref: ${{ needs.resolve.outputs.source_commit }}
 
   publish:
-    needs: verify
+    needs: [resolve, verify]
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
       CARGO_TERM_COLOR: always
-      RELEASE_TAG: ${{ github.event.release.tag_name }}
+      RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ needs.resolve.outputs.source_commit }}
           fetch-depth: 0
           persist-credentials: false
       - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
@@ -44,6 +100,7 @@ jobs:
           PACKAGE: ${{ steps.release.outputs.crate }}
         run: cargo publish --dry-run --locked -p "$PACKAGE"
       - name: Publish the selected crate
+        if: github.event_name == 'release' || inputs.publish
         env:
           PACKAGE: ${{ steps.release.outputs.crate }}
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
@@ -54,6 +111,7 @@ jobs:
           fi
           cargo publish --locked -p "$PACKAGE"
       - name: Wait for the published archive checksum in the crates.io index
+        if: github.event_name == 'release' || inputs.publish
         env:
           PACKAGE: ${{ steps.release.outputs.crate }}
           VERSION: ${{ steps.release.outputs.version }}

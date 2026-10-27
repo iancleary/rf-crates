@@ -49,5 +49,10 @@ Preparation failures restore original version files. After any public mutation,
 inspect the actual tag, workflow, and registry state. Use the maintained runner's
 explicit resume contract only for its supported GitHub-release failure boundary;
 use the recovery section of the release guide for publication-job failures.
+If a GitHub release exists but its registry version is absent, explicitly
+authorized recovery dispatches `release.yml` from main with the existing tag,
+its exact expected commit, and `publish=false` first. Verify the completed dry-run
+before dispatching with `publish=true`. Both runs must test the tagged source,
+not current main; do not treat a skipped upload as publication success.
 Never move public tags, silently republish an existing version, yank a package,
 close upstream PRs, or archive repositories as part of ordinary recovery.

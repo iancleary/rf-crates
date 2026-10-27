@@ -122,6 +122,35 @@ publication is confirmed. For later releases, update the appropriate notes;
 the initially checked-in minor-release notes are not reusable claims about
 future changes.
 
+## Recovery of an existing, unpublished release
+
+When the GitHub release already exists but its version is absent from crates.io,
+explicitly authorized recovery uses the corrected workflow on `main`, not a
+moved tag or a recreated release. First verify current main's push checks with
+`release_policy.py check-workflows`. Inspect the original tag commit and release.
+Then dispatch with publication disabled:
+
+```bash
+gh workflow run release.yml --repo iancleary/rf-crates --ref main \
+  -f tag=touchstone-v0.17.0 \
+  -f expected_commit=e55f46b2c5ef0db9d4c107d267887580ac360299 \
+  -F publish=false
+```
+
+Find the resulting `workflow_dispatch` run with `gh run list --workflow
+release.yml --event workflow_dispatch`, inspect its inputs and source commit,
+and wait for success. Repeat the same command with `-F publish=true` only with
+publication authorization. Wait for that run's upload and checksum checks before
+releasing a consumer. The dry-run neither uploads nor performs the post-upload
+index check; it does run the complete workspace and selected-package checks.
+
+Both automatic release events and recovery dispatches resolve the existing,
+non-draft, non-prerelease GitHub release to an exact main-branch ancestor. The
+expected commit must match. Verification and publication check out that same
+commit; neither silently builds the current main source. Dispatch is accepted
+only from `main`. The registry token is confined to the conditional upload step,
+and the existing preflight rejects already-published versions.
+
 ## Verification and operational limits
 
 The shared gate preserves workspace membership, formatting, all-target and
@@ -196,9 +225,9 @@ so a passing workspace run cannot conceal a rejected publication workflow.
 
 The public `touchstone-v0.17.0` tag still identifies
 `e55f46b2c5ef0db9d4c107d267887580ac360299`. Do not move it or recreate its GitHub
-release to obtain another event. Publishing that unchanged source through a
-corrected, explicitly guarded workflow-dispatch recovery is a proposed next
-step requiring authorization; it is not implemented by the ordinary tag runner.
+release to obtain another event. The guarded workflow-dispatch recovery above
+allows publication of that unchanged source after explicit authorization; the
+ordinary tag runner remains responsible only for new release requests.
 
 The reusable execution checklist lives in
 [the crate release skill](../.agents/skills/release-rf-crate/SKILL.md).
