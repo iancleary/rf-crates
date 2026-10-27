@@ -1,0 +1,585 @@
+use crate::utils::try_str_to_f64;
+use crate::TouchstoneError;
+
+use crate::data_pairs::DecibelAngle;
+use crate::data_pairs::DecibelAngleMatrix;
+use crate::data_pairs::MagnitudeAngle;
+use crate::data_pairs::MagnitudeAngleMatrix;
+use crate::data_pairs::RealImaginary;
+use crate::data_pairs::RealImaginaryMatrix;
+
+#[derive(Clone, Debug)]
+pub(crate) struct ParsedDataLine {
+    pub(crate) frequency: f64,
+    pub(crate) s_ri: RealImaginaryMatrix,
+    pub(crate) s_db: DecibelAngleMatrix,
+    pub(crate) s_ma: MagnitudeAngleMatrix,
+}
+
+pub(crate) fn parsed_data_line_from_ri_matrix(
+    frequency: f64,
+    s_ri: RealImaginaryMatrix,
+) -> ParsedDataLine {
+    let n = s_ri.size();
+
+    let mut s_db_data = Vec::with_capacity(n);
+    let mut s_ma_data = Vec::with_capacity(n);
+
+    for row in 1..=n {
+        let mut s_db_row = Vec::with_capacity(n);
+        let mut s_ma_row = Vec::with_capacity(n);
+
+        for col in 1..=n {
+            let value = s_ri.get(row, col);
+            s_db_row.push(DecibelAngle::from_real_imaginary(value));
+            s_ma_row.push(MagnitudeAngle::from_real_imaginary(value));
+        }
+
+        s_db_data.push(s_db_row);
+        s_ma_data.push(s_ma_row);
+    }
+
+    ParsedDataLine {
+        frequency,
+        s_ri,
+        s_db: DecibelAngleMatrix::from_vec(s_db_data),
+        s_ma: MagnitudeAngleMatrix::from_vec(s_ma_data),
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) enum TwoPortDataOrder {
+    #[default]
+    N21N12,
+    N12N21,
+}
+
+impl TwoPortDataOrder {
+    pub(crate) fn try_from_keyword_argument(argument: &str) -> Result<Self, TouchstoneError> {
+        match argument.trim().to_ascii_lowercase().as_str() {
+            "21_12" => Ok(Self::N21N12),
+            "12_21" => Ok(Self::N12N21),
+            _ => Err(TouchstoneError::UnsupportedTwoPortDataOrder {
+                order: argument.to_string(),
+            }),
+        }
+    }
+}
+
+#[cfg(test)]
+pub(crate) fn parse_data_line(
+    data_lines: Vec<String>,
+    format: &String,
+    n: &i32,
+    frequency_unit: &String,
+) -> ParsedDataLine {
+    parse_data_line_with_order(
+        data_lines,
+        format,
+        n,
+        frequency_unit,
+        TwoPortDataOrder::default(),
+    )
+}
+
+#[cfg(test)]
+pub(crate) fn parse_data_line_with_order(
+    data_lines: Vec<String>,
+    format: &String,
+    n: &i32,
+    frequency_unit: &String,
+    two_port_order: TwoPortDataOrder,
+) -> ParsedDataLine {
+    try_parse_data_line_with_order(data_lines, format, n, frequency_unit, two_port_order)
+        .expect("failed to parse data line")
+}
+
+pub(crate) fn try_parse_data_line_with_order(
+    data_lines: Vec<String>,
+    format: &String,
+    n: &i32,
+    frequency_unit: &String,
+    two_port_order: TwoPortDataOrder,
+) -> Result<ParsedDataLine, TouchstoneError> {
+    // println!("\n");
+    // println!("format:\n{:?}", *format);
+    // println!("n (number of ports): {:?}", *n);
+
+    // FROM docs/touchstone_ver2_1.pdf (Page 16)
+    //
+    // Legacy/default 2-port data is N11, N21, N12, N22. Touchstone 2.0/2.1
+    // files may explicitly select N11, N12, N21, N22 with [Two-Port Data Order] 12_21.
+
+    // where
+    // frequency value  frequency at which the network parameter data was taken or derived.
+
+    // N11, N12, N21, N22   network parameter data points, where Nij represents a pair of data values
+    //
+    // for the network parameter from port i to port j. Each Nij consists of two numeric
+    // values, whose meaning is determined by the format option specified in the option line.
+    // therefore, the total number of numeric values on a 2-port data line is 1 + (2 × (2^2)) = 9.
+    // generally, for an n-port data line, the total number of numeric values is 1 + (2 × (n^2)).
+    let expect_number_of_parts = expected_data_values(*n)?;
+    // println!("expected number of parts: {:?}", expect_number_of_parts);
+
+    // Combine all lines into a single vector of parts
+    // This handles both single-line and multi-line format
+    let mut parts = Vec::new();
+    for line in &data_lines {
+        // println!("Data Line: {}", line);
+        let line_parts: Vec<_> = line
+            .split('!')
+            .next()
+            .unwrap_or("")
+            .split_whitespace()
+            .collect();
+        parts.extend(line_parts);
+    }
+
+    let len_parts = parts.len();
+    // println!("Data Line Parts (len {}): {:?}", len_parts, parts);
+
+    if len_parts != expect_number_of_parts {
+        return Err(TouchstoneError::InvalidDataLineParts {
+            expected: expect_number_of_parts,
+            actual: len_parts,
+        });
+    }
+
+    // split into f64 parts, after checking the expected length
+    let f64_parts: Vec<_> = parts
+        .into_iter()
+        .map(try_str_to_f64)
+        .collect::<Result<_, _>>()?;
+
+    // println!("{}", len_parts);
+    // println!("f64_parts (len {}): {:?}", len_parts, f64_parts);
+
+    let n_usize = *n as usize;
+
+    let mut frequency = f64_parts[0];
+
+    if frequency_unit == "THz" {
+        // convert to Hz
+        // println!("Converting frequency from THz to Hz");
+        // println!("Original frequency: {} THz", frequency);
+        frequency = rfconversions::frequency::thz_to_hz(frequency);
+        tracing::trace!("Converted frequency: {} Hz", frequency);
+    } else if frequency_unit == "GHz" {
+        // convert to Hz
+        // println!("Converting frequency from GHz to Hz");
+        // println!("Original frequency: {} GHz", frequency);
+        frequency = rfconversions::frequency::ghz_to_hz(frequency);
+        // println!("Converted frequency: {} Hz", frequency);
+    } else if frequency_unit == "MHz" {
+        // convert to Hz
+        // println!("Converting frequency from MHz to Hz");
+        // println!("Original frequency: {} MHz", frequency);
+        frequency = rfconversions::frequency::mhz_to_hz(frequency);
+        // println!("Converted frequency: {} Hz", frequency);
+    } else if frequency_unit == "kHz" {
+        // convert to Hz
+        // println!("Converting frequency from kHz to Hz");
+        // println!("Original frequency: {} kHz", frequency);
+        frequency = rfconversions::frequency::khz_to_hz(frequency);
+        // println!("Converted frequency: {} Hz", frequency);
+    } else if frequency_unit == "Hz" {
+        // no conversion needed
+        // println!("Frequency is already in Hz: {} Hz", frequency);
+    } else {
+        return Err(TouchstoneError::UnsupportedFrequencyUnit {
+            unit: frequency_unit.clone(),
+        });
+    }
+
+    if format == "RI" {
+        // Real-Imaginary format
+        let pairs = parse_pairs(&f64_parts, n_usize, RealImaginary);
+        let s_ri_data = pairs_to_matrix(pairs, n_usize, two_port_order);
+        let s_ri = RealImaginaryMatrix::from_vec(s_ri_data);
+
+        // Convert to DecibelAngle format
+        let mut s_db_data = Vec::new();
+        for row in 0..n_usize {
+            let mut row_vec = Vec::new();
+            for col in 0..n_usize {
+                row_vec.push(DecibelAngle::from_real_imaginary(
+                    s_ri.get(row + 1, col + 1),
+                ));
+            }
+            s_db_data.push(row_vec);
+        }
+        let s_db = DecibelAngleMatrix::from_vec(s_db_data);
+
+        // Convert to MagnitudeAngle format
+        let mut s_ma_data = Vec::new();
+        for row in 0..n_usize {
+            let mut row_vec = Vec::new();
+            for col in 0..n_usize {
+                row_vec.push(MagnitudeAngle::from_real_imaginary(
+                    s_ri.get(row + 1, col + 1),
+                ));
+            }
+            s_ma_data.push(row_vec);
+        }
+        let s_ma = MagnitudeAngleMatrix::from_vec(s_ma_data);
+
+        Ok(ParsedDataLine {
+            frequency,
+            s_ri,
+            s_db,
+            s_ma,
+        })
+    } else if format == "MA" {
+        // Magnitude-Angle format
+        let pairs = parse_pairs(&f64_parts, n_usize, MagnitudeAngle);
+        let s_ma_data = pairs_to_matrix(pairs, n_usize, two_port_order);
+        let s_ma = MagnitudeAngleMatrix::from_vec(s_ma_data);
+
+        // Convert to RealImaginary format
+        let mut s_ri_data = Vec::new();
+        for row in 0..n_usize {
+            let mut row_vec = Vec::new();
+            for col in 0..n_usize {
+                row_vec.push(RealImaginary::from_magnitude_angle(
+                    s_ma.get(row + 1, col + 1),
+                ));
+            }
+            s_ri_data.push(row_vec);
+        }
+        let s_ri = RealImaginaryMatrix::from_vec(s_ri_data);
+
+        // Convert to DecibelAngle format
+        let mut s_db_data = Vec::new();
+        for row in 0..n_usize {
+            let mut row_vec = Vec::new();
+            for col in 0..n_usize {
+                row_vec.push(DecibelAngle::from_magnitude_angle(
+                    s_ma.get(row + 1, col + 1),
+                ));
+            }
+            s_db_data.push(row_vec);
+        }
+        let s_db = DecibelAngleMatrix::from_vec(s_db_data);
+
+        Ok(ParsedDataLine {
+            frequency,
+            s_ri,
+            s_db,
+            s_ma,
+        })
+    } else if format == "DB" {
+        // Decibel-Angle format
+        let pairs = parse_pairs(&f64_parts, n_usize, DecibelAngle);
+        let s_db_data = pairs_to_matrix(pairs, n_usize, two_port_order);
+        let s_db = DecibelAngleMatrix::from_vec(s_db_data);
+
+        // Convert to RealImaginary format
+        let mut s_ri_data = Vec::new();
+        for row in 0..n_usize {
+            let mut row_vec = Vec::new();
+            for col in 0..n_usize {
+                row_vec.push(RealImaginary::from_decibel_angle(
+                    s_db.get(row + 1, col + 1),
+                ));
+            }
+            s_ri_data.push(row_vec);
+        }
+        let s_ri = RealImaginaryMatrix::from_vec(s_ri_data);
+
+        // Convert to MagnitudeAngle format
+        let mut s_ma_data = Vec::new();
+        for row in 0..n_usize {
+            let mut row_vec = Vec::new();
+            for col in 0..n_usize {
+                row_vec.push(MagnitudeAngle::from_decibel_angle(
+                    s_db.get(row + 1, col + 1),
+                ));
+            }
+            s_ma_data.push(row_vec);
+        }
+        let s_ma = MagnitudeAngleMatrix::from_vec(s_ma_data);
+
+        Ok(ParsedDataLine {
+            frequency,
+            s_ri,
+            s_db,
+            s_ma,
+        })
+    } else {
+        Err(TouchstoneError::UnsupportedFormat {
+            format: format.clone(),
+        })
+    }
+}
+
+/// Calculate a full matrix's token count before any allocation based on its rank.
+/// An untrusted extension can declare far more ports than its input contains.
+pub(crate) fn expected_data_values(ports: i32) -> Result<usize, TouchstoneError> {
+    usize::try_from(ports)
+        .ok()
+        .filter(|&ports| ports > 0)
+        .and_then(|ports| ports.checked_mul(ports))
+        .and_then(|pairs| pairs.checked_mul(2))
+        .and_then(|values| values.checked_add(1))
+        .ok_or_else(|| TouchstoneError::InvalidNumberOfPorts {
+            value: ports.to_string(),
+        })
+}
+
+fn parse_pairs<T, F>(f64_parts: &[f64], n_usize: usize, pair_constructor: F) -> Vec<T>
+where
+    F: Fn(f64, f64) -> T,
+{
+    (0..(n_usize * n_usize))
+        .map(|pair_index| {
+            let idx = 1 + 2 * pair_index;
+            pair_constructor(f64_parts[idx], f64_parts[idx + 1])
+        })
+        .collect()
+}
+
+fn pairs_to_matrix<T: Copy>(
+    pairs: Vec<T>,
+    n_usize: usize,
+    two_port_order: TwoPortDataOrder,
+) -> Vec<Vec<T>> {
+    if n_usize == 2 {
+        let s11 = pairs[0];
+        let p1 = pairs[1];
+        let p2 = pairs[2];
+        let s22 = pairs[3];
+        let (s21, s12) = match two_port_order {
+            TwoPortDataOrder::N21N12 => (p1, p2),
+            TwoPortDataOrder::N12N21 => (p2, p1),
+        };
+
+        vec![vec![s11, s12], vec![s21, s22]]
+    } else {
+        pairs
+            .chunks(n_usize)
+            .map(|row| row.to_vec())
+            .collect::<Vec<_>>()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn approx_eq(a: f64, b: f64, tol: f64) -> bool {
+        (a - b).abs() < tol
+    }
+
+    // --- 1-port RI format ---
+    #[test]
+    fn test_parse_1port_ri_hz() {
+        let lines = vec!["1000000000 0.5 -0.3".to_string()];
+        let result = parse_data_line(lines, &"RI".to_string(), &1, &"Hz".to_string());
+        assert!(approx_eq(result.frequency, 1e9, 1.0));
+        let ri = result.s_ri.get(1, 1);
+        assert!(approx_eq(ri.0, 0.5, 1e-10));
+        assert!(approx_eq(ri.1, -0.3, 1e-10));
+    }
+
+    // --- Frequency unit conversions ---
+    #[test]
+    fn test_parse_frequency_ghz() {
+        let lines = vec!["2.4 0.1 0.2".to_string()];
+        let result = parse_data_line(lines, &"RI".to_string(), &1, &"GHz".to_string());
+        assert!(approx_eq(result.frequency, 2.4e9, 1.0));
+    }
+
+    #[test]
+    fn test_parse_frequency_mhz() {
+        let lines = vec!["900 0.1 0.2".to_string()];
+        let result = parse_data_line(lines, &"RI".to_string(), &1, &"MHz".to_string());
+        assert!(approx_eq(result.frequency, 900e6, 1.0));
+    }
+
+    #[test]
+    fn test_parse_frequency_khz() {
+        let lines = vec!["500 0.1 0.2".to_string()];
+        let result = parse_data_line(lines, &"RI".to_string(), &1, &"kHz".to_string());
+        assert!(approx_eq(result.frequency, 500e3, 1.0));
+    }
+
+    #[test]
+    fn test_parse_frequency_thz() {
+        let lines = vec!["0.3 0.1 0.2".to_string()];
+        let result = parse_data_line(lines, &"RI".to_string(), &1, &"THz".to_string());
+        assert!(approx_eq(result.frequency, 0.3e12, 1.0));
+    }
+
+    // --- 1-port MA format ---
+    #[test]
+    fn test_parse_1port_ma() {
+        let lines = vec!["1000000000 0.8 -45.0".to_string()];
+        let result = parse_data_line(lines, &"MA".to_string(), &1, &"Hz".to_string());
+        let ma = result.s_ma.get(1, 1);
+        assert!(approx_eq(ma.0, 0.8, 1e-10));
+        assert!(approx_eq(ma.1, -45.0, 1e-10));
+        // Cross-check: RI conversion
+        let ri = result.s_ri.get(1, 1);
+        let expected_real = 0.8 * (-45.0_f64.to_radians()).cos();
+        let expected_imag = 0.8 * (-45.0_f64.to_radians()).sin();
+        assert!(approx_eq(ri.0, expected_real, 1e-6));
+        assert!(approx_eq(ri.1, expected_imag, 1e-6));
+    }
+
+    // --- 1-port DB format ---
+    #[test]
+    fn test_parse_1port_db() {
+        let lines = vec!["1000000000 -3.0 90.0".to_string()];
+        let result = parse_data_line(lines, &"DB".to_string(), &1, &"Hz".to_string());
+        let db = result.s_db.get(1, 1);
+        assert!(approx_eq(db.0, -3.0, 1e-10));
+        assert!(approx_eq(db.1, 90.0, 1e-10));
+        // Cross-check: magnitude from dB
+        let ma = result.s_ma.get(1, 1);
+        let expected_mag = 10.0_f64.powf(-3.0 / 20.0);
+        assert!(approx_eq(ma.0, expected_mag, 1e-6));
+    }
+
+    // --- 2-port RI format ---
+    #[test]
+    fn test_parse_2port_ri_default_21_12_order() {
+        // S11, S21, S12, S22
+        let lines = vec!["1e9 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8".to_string()];
+        let result = parse_data_line(lines, &"RI".to_string(), &2, &"Hz".to_string());
+        let s11 = result.s_ri.get(1, 1);
+        assert!(approx_eq(s11.0, 0.1, 1e-10));
+        assert!(approx_eq(s11.1, 0.2, 1e-10));
+        let s12 = result.s_ri.get(1, 2);
+        assert!(approx_eq(s12.0, 0.5, 1e-10));
+        assert!(approx_eq(s12.1, 0.6, 1e-10));
+        let s21 = result.s_ri.get(2, 1);
+        assert!(approx_eq(s21.0, 0.3, 1e-10));
+        assert!(approx_eq(s21.1, 0.4, 1e-10));
+        let s22 = result.s_ri.get(2, 2);
+        assert!(approx_eq(s22.0, 0.7, 1e-10));
+        assert!(approx_eq(s22.1, 0.8, 1e-10));
+    }
+
+    #[test]
+    fn test_parse_2port_ri_explicit_12_21_order() {
+        // S11, S12, S21, S22
+        let lines = vec!["1e9 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8".to_string()];
+        let result = parse_data_line_with_order(
+            lines,
+            &"RI".to_string(),
+            &2,
+            &"Hz".to_string(),
+            TwoPortDataOrder::N12N21,
+        );
+        let s11 = result.s_ri.get(1, 1);
+        assert!(approx_eq(s11.0, 0.1, 1e-10));
+        assert!(approx_eq(s11.1, 0.2, 1e-10));
+        let s12 = result.s_ri.get(1, 2);
+        assert!(approx_eq(s12.0, 0.3, 1e-10));
+        assert!(approx_eq(s12.1, 0.4, 1e-10));
+        let s21 = result.s_ri.get(2, 1);
+        assert!(approx_eq(s21.0, 0.5, 1e-10));
+        assert!(approx_eq(s21.1, 0.6, 1e-10));
+        let s22 = result.s_ri.get(2, 2);
+        assert!(approx_eq(s22.0, 0.7, 1e-10));
+        assert!(approx_eq(s22.1, 0.8, 1e-10));
+    }
+
+    // --- Multi-line data (2-port split across lines) ---
+    #[test]
+    fn test_parse_2port_multiline() {
+        let lines = vec![
+            "1e9 0.1 0.2 0.3 0.4".to_string(),
+            "0.5 0.6 0.7 0.8".to_string(),
+        ];
+        let result = parse_data_line(lines, &"RI".to_string(), &2, &"Hz".to_string());
+        let s22 = result.s_ri.get(2, 2);
+        assert!(approx_eq(s22.0, 0.7, 1e-10));
+        assert!(approx_eq(s22.1, 0.8, 1e-10));
+    }
+
+    // --- Inline comments filtered ---
+    // Note: current parser filters tokens starting with '!' but not subsequent
+    // words in the comment. A single-word comment works; multi-word would fail.
+    // TODO: Fix parser to skip all tokens after first '!' token.
+    #[test]
+    fn test_parse_inline_comment_single_word_filtered() {
+        let lines = vec!["1e9 0.5 -0.3 !comment".to_string()];
+        let result = parse_data_line(lines, &"RI".to_string(), &1, &"Hz".to_string());
+        let ri = result.s_ri.get(1, 1);
+        assert!(approx_eq(ri.0, 0.5, 1e-10));
+        assert!(approx_eq(ri.1, -0.3, 1e-10));
+    }
+
+    // --- Format cross-conversions are consistent ---
+    #[test]
+    fn test_ri_round_trip_consistency() {
+        let lines = vec!["1e9 0.6 -0.4".to_string()];
+        let result = parse_data_line(lines, &"RI".to_string(), &1, &"Hz".to_string());
+        // RI -> DB -> back to magnitude should be consistent with MA
+        let ri = result.s_ri.get(1, 1);
+        let ma = result.s_ma.get(1, 1);
+        let db = result.s_db.get(1, 1);
+        let mag = (ri.0 * ri.0 + ri.1 * ri.1).sqrt();
+        assert!(approx_eq(ma.0, mag, 1e-10));
+        assert!(approx_eq(db.0, 20.0 * mag.log10(), 1e-6));
+    }
+
+    #[test]
+    fn test_parse_unsupported_format_returns_error() {
+        let lines = vec!["1e9 0.1 0.2".to_string()];
+        let error = try_parse_data_line_with_order(
+            lines,
+            &"XX".to_string(),
+            &1,
+            &"Hz".to_string(),
+            TwoPortDataOrder::default(),
+        )
+        .unwrap_err();
+
+        assert!(matches!(
+            error,
+            TouchstoneError::UnsupportedFormat { format } if format == "XX"
+        ));
+    }
+
+    #[test]
+    fn test_parse_unsupported_frequency_unit_returns_error() {
+        let lines = vec!["1e9 0.1 0.2".to_string()];
+        let error = try_parse_data_line_with_order(
+            lines,
+            &"RI".to_string(),
+            &1,
+            &"PHz".to_string(),
+            TwoPortDataOrder::default(),
+        )
+        .unwrap_err();
+
+        assert!(matches!(
+            error,
+            TouchstoneError::UnsupportedFrequencyUnit { unit } if unit == "PHz"
+        ));
+    }
+
+    #[test]
+    fn test_parse_wrong_number_of_parts_returns_error() {
+        let lines = vec!["1e9 0.1".to_string()]; // Missing second value for 1-port
+        let error = try_parse_data_line_with_order(
+            lines,
+            &"RI".to_string(),
+            &1,
+            &"Hz".to_string(),
+            TwoPortDataOrder::default(),
+        )
+        .unwrap_err();
+
+        assert!(matches!(
+            error,
+            TouchstoneError::InvalidDataLineParts {
+                expected: 3,
+                actual: 2
+            }
+        ));
+    }
+}
