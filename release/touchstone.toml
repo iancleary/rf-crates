@@ -10,7 +10,11 @@ notes_file = "release/notes/touchstone.md"
 publish = true
 
 [checks]
-commands = [["just", "ci"], ["cargo", "publish", "--dry-run", "--locked", "-p", "touchstone"]]
+commands = [
+  ["uv", "run", "--offline", "--no-project", "scripts/release_policy.py", "check-workflows"],
+  ["just", "ci"],
+  ["cargo", "publish", "--dry-run", "--locked", "-p", "touchstone"],
+]
 
 [runner_source]
 repository = "https://github.com/iancleary/release-skills"

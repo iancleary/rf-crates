@@ -18,7 +18,9 @@ Preparation and publication are separate:
 3. The unchanged [maintained release runner](../scripts/release.py) executes the
    selected [crate contract](../release/). It checks a clean checkout, the exact
    version, public main ancestry, registry dependencies, and release notes;
-   runs all local checks; then creates the qualified tag and GitHub release.
+   requires **every push workflow for the selected commit** to have succeeded,
+   including workflow-file validation; runs all local checks; then creates the
+   qualified tag and GitHub release.
 4. That GitHub release triggers [the publication workflow](../.github/workflows/release.yml).
    It calls the same [workspace verification workflow](../.github/workflows/ci.yml)
    used by pull requests, without passing registry credentials.
@@ -84,6 +86,8 @@ just prepare-release rfconversions --bump minor --apply
 # Review Cargo.toml, the member manifest, Cargo.lock, and release notes.
 # Update release/notes/rfconversions.md to start with '# rfconversions X.Y.Z'.
 # Commit the reviewed preparation, run just ci, and push it to origin/main.
+# Wait for all push workflows, not only the named workspace verification run.
+uv run --offline --no-project scripts/release_policy.py check-workflows
 
 uv run --offline --no-project scripts/release.py check \
   --config release/rfconversions.toml --json
@@ -181,6 +185,19 @@ SHA-256 `124797d8aee1373c8cc052f30713d118a56be9db9d37d6674d4939e61ebd3664`;
 the downloaded archive's VCS record named that clean tagged commit. The corrected
 workflow locates exactly one archive in its isolated publication target, and its
 checksum step was rerun successfully against the rebuilt release archive.
+
+The subsequent Touchstone 0.17.0 GitHub release exposed a separate workflow
+validation error: `runner.temp` is unavailable in job-level `env`. GitHub rejected
+that workflow before starting a publication job; Touchstone was not uploaded.
+The target path is now assigned in a step through `RUNNER_TEMP` and `GITHUB_ENV`.
+The new `check-workflows` release gate checks all push runs for the exact commit,
+so a passing workspace run cannot conceal a rejected publication workflow.
+
+The public `touchstone-v0.17.0` tag still identifies
+`e55f46b2c5ef0db9d4c107d267887580ac360299`. Do not move it or recreate its GitHub
+release to obtain another event. Publishing that unchanged source through a
+corrected, explicitly guarded workflow-dispatch recovery is a proposed next
+step requiring authorization; it is not implemented by the ordinary tag runner.
 
 The reusable execution checklist lives in
 [the crate release skill](../.agents/skills/release-rf-crate/SKILL.md).

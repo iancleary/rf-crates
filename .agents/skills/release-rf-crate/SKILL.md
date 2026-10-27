@@ -24,7 +24,10 @@ or print that secret. Preserve independent package versions and MIT licenses.
    command with `--apply`. Review the package version, root workspace requirements,
    root lockfile, and crate-specific notes. Commit and check the preparation,
    then push it to main within the authorized release scope.
-3. Run the selected contract's `check`, then `plan --version X.Y.Z`. Preserve the
+3. Wait for all push workflows for the prepared commit. The contract's
+   `check-workflows` gate rejects absent, pending, or failed runs, including
+   workflow-file validation failures hidden by a successful workspace run.
+   Run the selected contract's `check`, then `plan --version X.Y.Z`. Preserve the
    returned commit and config checksum. Run `just cut-release <crate> --dry-run`
    with those exact guards; only then repeat with `--apply`.
 4. Inspect the resulting `Publish RF crate` run and wait for success. Confirm

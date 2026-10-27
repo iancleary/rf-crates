@@ -10,7 +10,11 @@ notes_file = "release/notes/linkbudget.md"
 publish = true
 
 [checks]
-commands = [["just", "ci"], ["cargo", "publish", "--dry-run", "--locked", "-p", "linkbudget"]]
+commands = [
+  ["uv", "run", "--offline", "--no-project", "scripts/release_policy.py", "check-workflows"],
+  ["just", "ci"],
+  ["cargo", "publish", "--dry-run", "--locked", "-p", "linkbudget"],
+]
 
 [runner_source]
 repository = "https://github.com/iancleary/release-skills"

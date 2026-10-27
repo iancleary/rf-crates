@@ -114,6 +114,26 @@ def validate(crate: str, version: str) -> dict:
     }
 
 
+def check_workflows() -> dict:
+    commit = command("git", "rev-parse", "HEAD")
+    runs = json.loads(command(
+        "gh", "run", "list", "--repo", "iancleary/rf-crates",
+        "--commit", commit, "--event", "push", "--limit", "100",
+        "--json", "databaseId,name,status,conclusion,url",
+    ))
+    if not runs or len(runs) == 100:
+        raise ValueError("push-workflow evidence is absent or incomplete; inspect GitHub")
+    if not any(run["name"] == "RF workspace verification" for run in runs):
+        raise ValueError("the required workspace verification run is missing")
+    for run in runs:
+        if run["status"] != "completed" or run["conclusion"] != "success":
+            raise ValueError(
+                f"push workflow is not successful: {run['name']} "
+                f"({run['status']}/{run['conclusion']}): {run['url']}"
+            )
+    return {"commit": commit, "push_workflows_verified": runs}
+
+
 def replace_once(text: str, pattern: str, replacement: str) -> str:
     updated, count = re.subn(pattern, replacement, text, flags=re.MULTILINE)
     if count != 1:
@@ -200,6 +220,9 @@ def wait_for_index(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="action", required=True)
+    commands.add_parser(
+        "check-workflows", help="require successful push workflows for the current commit",
+    )
     preparation = commands.add_parser(
         "prepare", help="preview or prepare local version files; never publishes",
     )
@@ -232,6 +255,8 @@ def main() -> int:
             result = prepare(args.crate, args.bump, args.apply)
         elif args.action == "validate":
             result = validate(args.crate, args.version)
+        elif args.action == "check-workflows":
+            result = check_workflows()
         elif args.action == "preflight":
             crate, separator, version = args.tag.partition("-v")
             if not separator or crate not in CRATES:

@@ -22,7 +22,6 @@ jobs:
     timeout-minutes: 25
     env:
       CARGO_TERM_COLOR: always
-      CARGO_TARGET_DIR: ${{ runner.temp }}/rf-crate-publication
       RELEASE_TAG: ${{ github.event.release.tag_name }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -31,6 +30,8 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - name: Isolate publication artifacts
+        run: echo "CARGO_TARGET_DIR=$RUNNER_TEMP/rf-crate-publication" >> "$GITHUB_ENV"
       - name: Select stable Rust
         run: |
           rustup toolchain install stable --profile minimal
