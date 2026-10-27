@@ -4,9 +4,10 @@
 
 There are four packages, not one workspace version. Each release has its own
 manifest version, notes, tag, GitHub release, and crates.io artifact:
-`rfconversions-v0.8.0`, for example. GitHub's repository-wide “latest release”
-label is deliberately not assigned because four independent version lines do
-not have a useful shared latest version.
+`rfconversions-v0.8.0`, for example. The runner uses `--latest=false`, but GitHub
+may still display an automatically selected repository-wide “latest release”
+(as observed for the initial Touchstone release). That label is not authoritative:
+four independent package version lines do not have a useful shared latest version.
 
 Preparation and publication are separate:
 
