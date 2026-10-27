@@ -15,4 +15,4 @@ resolver = "2"
 
 [workspace.dependencies]
 rfconversions = { path = "crates/rfconversions", version = "0.8.0" }
-touchstone = { path = "crates/touchstone", version = "0.16.0" }
+touchstone = { path = "crates/touchstone", version = "0.17.0" }
