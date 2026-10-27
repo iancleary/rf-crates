@@ -1,0 +1,26 @@
+[package]
+authors = ["Ian Cleary <iancleary@hey.com>"]
+description = "Common Radio Frequency conversion equations for RF Modeling"
+documentation = "https://docs.rs/rfconversions"
+edition = "2021"
+homepage = "https://github.com/iancleary/rfconversions"
+keywords = ["rf", "conversions", "radio", "engineering"]
+license = "MIT"
+name = "rfconversions"
+readme = "README.md"
+repository = "https://github.com/iancleary/rfconversions"
+rust-version = "1.70"
+version = "0.7.7"
+exclude = [".vscode/*"]
+categories = ["mathematics", "science"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "conversions"
+harness = false
