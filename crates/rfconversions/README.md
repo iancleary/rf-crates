@@ -59,7 +59,20 @@ let dbm = power::dbw_to_dbm(0.0);       // 30.0 dBm
 // dB ↔ Linear
 let linear = power::db_to_linear(30.0); // 1000.0
 let db = power::linear_to_db(1000.0);   // 30.0 dB
+
+// Independent powers with the same reference (dBm here)
+let total_dbm = power::add_power_db(0.0, 0.0);
+assert!((total_dbm - 3.010299956639812).abs() < 1e-14);
 ```
+
+`add_power_db(a, b)` sums independent/incoherent powers, not coherent phasors,
+means in dB, or gains. Use dBm with dBm, dBW with dBW, or power ratios with a
+common base; normalize mixed references first. Negative infinity is zero power,
+positive infinity dominates unless either input is NaN, and NaN propagates.
+The calculation avoids intermediate linear overflow and preserves small
+contributions where possible; final rounding still applies. See
+[Adding independent powers](docs/power-addition.md) for the algorithm,
+comparison evidence, and numerical limits.
 
 ## 2. Frequency Conversions
 
@@ -215,6 +228,7 @@ let t0 = constants::T0;             // 290.0 K (standard reference)
 | `power` | `dbw_to_dbm(f64) → f64` | dBW to dBm |
 | `power` | `db_to_linear(f64) → f64` | dB to linear ratio |
 | `power` | `linear_to_db(f64) → f64` | Linear ratio to dB |
+| `power` | `add_power_db(f64, f64) → f64` | Sum independent powers sharing a dB reference |
 | `frequency` | `frequency_to_wavelength(f64) → f64` | Frequency (Hz) to wavelength (m) |
 | `frequency` | `wavelength_to_frequency(f64) → f64` | Wavelength (m) to frequency (Hz) |
 | `frequency` | `hz_to_khz`, `hz_to_mhz`, `hz_to_ghz`, `hz_to_thz` | Hz scaling up |

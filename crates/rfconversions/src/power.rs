@@ -56,6 +56,60 @@ pub fn linear_to_db(value: f64) -> f64 {
     10.0 * f64::log10(value)
 }
 
+/// Add two independent (incoherent) powers in dB with the same reference.
+///
+/// Two dBm inputs yield dBm; two dBW inputs yield dBW. Power ratios must
+/// share a common base. This is not coherent phasor addition, a mean in dB,
+/// or addition of gains. Convert mixed references before calling.
+///
+/// The finite calculation stays in the log domain to avoid intermediate
+/// overflow and preserve small contributions using `ln_1p`. The final `f64`
+/// result can still round away a contribution. At extreme separations the
+/// `powf` term can also underflow before multiplication by `10/ln(10)`:
+/// `add_power_db(0.0, -3238.0)` has been observed to return zero although the
+/// exact-input reference rounds to the smallest positive subnormal. Not every
+/// representable correction survives; universal correct rounding is not promised.
+///
+/// NaN in either input returns NaN, even with infinity. Otherwise positive
+/// infinity returns positive infinity. Negative infinity represents zero
+/// power and returns the other input unchanged (including its zero sign);
+/// two negative infinities return negative infinity.
+///
+/// # Examples
+///
+/// ```
+/// use rfconversions::power::add_power_db;
+///
+/// // Independent 1 mW contributions, both expressed in dBm.
+/// let total_dbm = add_power_db(0.0, 0.0);
+/// assert!((total_dbm - 3.010299956639812).abs() < 1e-14);
+/// assert_eq!(add_power_db(f64::NEG_INFINITY, -100.0), -100.0);
+/// ```
+#[doc(alias = "power sum")]
+#[doc(alias = "incoherent")]
+#[doc(alias = "log-sum-exp")]
+#[doc(alias = "dBm")]
+#[doc(alias = "dBW")]
+#[must_use]
+pub fn add_power_db(a: f64, b: f64) -> f64 {
+    if a.is_nan() || b.is_nan() {
+        return f64::NAN;
+    }
+    if a == f64::INFINITY || b == f64::INFINITY {
+        return f64::INFINITY;
+    }
+    if a == f64::NEG_INFINITY {
+        return b;
+    }
+    if b == f64::NEG_INFINITY {
+        return a;
+    }
+
+    let high = a.max(b);
+    let low = a.min(b);
+    high + (10.0 / std::f64::consts::LN_10) * 10.0_f64.powf((low - high) / 10.0).ln_1p()
+}
+
 /// Convert dBm to milliwatts.
 ///
 /// # Examples

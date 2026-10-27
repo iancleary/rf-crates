@@ -26,6 +26,12 @@ fn power_linear_to_db() {
     assert_eq!(db, 30.0);
 }
 
+#[test]
+fn power_add_independent_dbm() {
+    let total_dbm = rfconversions::power::add_power_db(0.0, 0.0);
+    assert!((total_dbm - 3.010299956639812).abs() < 1e-14);
+}
+
 // === Section 2: Frequency Conversions ===
 
 #[test]

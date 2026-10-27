@@ -38,6 +38,18 @@ fn receiver_sensitivity_levels() {
 }
 
 #[test]
+fn independent_noise_and_interference_with_mixed_measurement_units() {
+    // Both readings refer to the same receiver input and bandwidth.
+    let noise_dbm = -100.0;
+    let interference_dbw = -140.0;
+    let total_dbm = add_power_db(noise_dbm, dbw_to_dbm(interference_dbw));
+    let total_watts = dbm_to_watts(total_dbm);
+
+    // 1e-13 W of noise plus 1e-14 W of independent interference.
+    assert!((total_watts - 1.1e-13).abs() < 1e-27);
+}
+
+#[test]
 fn dbm_dbw_roundtrip_across_range() {
     // Test roundtrip conversion across a wide dynamic range
     for dbm_val in [-174, -130, -100, -50, 0, 10, 30, 43, 50, 60] {
