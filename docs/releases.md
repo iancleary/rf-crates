@@ -170,6 +170,27 @@ requires exactly one matching file beneath that target's `package/` directory:
 Cargo 1.99 stages publication archives under `package/tmp-crate/`, not directly
 under `package/`. Never accept a stale archive left by an earlier workspace build.
 
+For an independent post-publication check, download the actual registry archive
+and reuse the bounded checksum verifier (example for an already-published crate):
+
+```bash
+crate=touchstone
+version=0.17.0
+archive_directory=$(mktemp -d)
+archive="$archive_directory/$crate-$version.crate"
+curl --fail --show-error --location --max-time 60 \
+  "https://static.crates.io/crates/$crate/$crate-$version.crate" -o "$archive"
+uv run --offline --no-project scripts/release_policy.py \
+  wait-index "$crate" "$version" --timeout 600 --archive "$archive"
+tar -xOf "$archive" "$crate-$version/.cargo_vcs_info.json"
+tar -xOf "$archive" "$crate-$version/Cargo.toml"
+```
+
+Compare the VCS commit to the remote tag's peeled commit, and inspect the
+normalized manifest for the package version, MIT license, monorepo repository,
+and expected registry dependency versions without local paths. This checks the
+registry artifact rather than a potentially stale local workspace archive.
+
 Minimum-Rust-version metadata is preserved, but stable-toolchain CI does not
 certify every declared historical compiler. Do not describe these releases as
 having passed an MSRV matrix. Original upstream PRs and repository settings are
@@ -235,6 +256,29 @@ The public `touchstone-v0.17.0` tag still identifies
 release to obtain another event. The guarded workflow-dispatch recovery above
 allows publication of that unchanged source after explicit authorization; the
 ordinary tag runner remains responsible only for new release requests.
+
+## Completed initial minor releases
+
+The authorized sequence is complete. Touchstone recovery first passed its
+[non-publishing dispatch](https://github.com/iancleary/rf-crates/actions/runs/40569220686),
+with both verification and packaging checking out its unchanged tagged commit.
+After publication succeeded and its index checksum was confirmed, gainlineup
+and then linkbudget were released through their ordinary crate contracts.
+
+| Package | Version | Publication evidence |
+| --- | --- | --- |
+| rfconversions | 0.8.0 | Uploaded in the original run; independently recovered checksum verification documented above |
+| touchstone | 0.17.0 | [Recovery publication passed](https://github.com/iancleary/rf-crates/actions/runs/40569687088) |
+| gainlineup | 0.24.0 | [Publication passed](https://github.com/iancleary/rf-crates/actions/runs/40570459361) |
+| linkbudget | 0.8.0 | [Publication passed](https://github.com/iancleary/rf-crates/actions/runs/40571050410) |
+
+All four downloaded registry archives were checked against their non-yanked
+sparse-index entries and remote tag commits. Their normalized manifests retain
+MIT licenses and the monorepo repository URL. Touchstone and linkbudget require
+rfconversions 0.8.0; gainlineup requires rfconversions 0.8.0 and touchstone 0.17.0.
+These are Cargo compatibility requirements, not exact pins for consumers.
+No existing public tag was moved and no registry version was republished.
+Historical failed runs remain visible rather than being described as successful.
 
 The reusable execution checklist lives in
 [the crate release skill](../.agents/skills/release-rf-crate/SKILL.md).

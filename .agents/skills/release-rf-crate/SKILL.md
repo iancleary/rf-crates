@@ -35,6 +35,11 @@ or print that secret. Preserve independent package versions and MIT licenses.
    alone is not completion evidence.
 5. Proceed to the next authorized crate only after its dependencies are indexed
    and the prior publication is confirmed. Stop at any failed gate.
+6. For final registry verification, download each published archive with the
+   native HTTP client and pass it to `release_policy.py wait-index --archive`.
+   Compare its VCS record to the remote tag commit and inspect normalized package
+   metadata and dependency requirements. The release guide provides commands;
+   do not substitute an existing local workspace archive for the downloaded one.
 
 ## Verification and recovery
 
