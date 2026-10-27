@@ -128,6 +128,13 @@ When the GitHub release already exists but its version is absent from crates.io,
 explicitly authorized recovery uses the corrected workflow on `main`, not a
 moved tag or a recreated release. First verify current main's push checks with
 `release_policy.py check-workflows`. Inspect the original tag commit and release.
+Dispatch requires the GitHub CLI token to have **Actions: read and write** on
+this repository; permission to push Git commits does not imply this permission.
+An HTTP 403 from the dispatch API is a hard stop, not permission to change
+credentials or substitute another trigger. The authorized operator can adjust
+the token permissions or use Actions → Publish RF crate → Run workflow with
+the same inputs. Never paste tokens into commands, documentation, or chat.
+
 Then dispatch with publication disabled:
 
 ```bash

@@ -54,5 +54,8 @@ authorized recovery dispatches `release.yml` from main with the existing tag,
 its exact expected commit, and `publish=false` first. Verify the completed dry-run
 before dispatching with `publish=true`. Both runs must test the tagged source,
 not current main; do not treat a skipped upload as publication success.
+Dispatch needs Actions read/write permission on the CLI token. On HTTP 403,
+stop and ask the operator to grant that permission or use the GitHub workflow UI
+with the same inputs. Do not change credentials or substitute a trigger.
 Never move public tags, silently republish an existing version, yank a package,
 close upstream PRs, or archive repositories as part of ordinary recovery.
