@@ -1,0 +1,470 @@
+#![warn(missing_docs)]
+//! # gainlineup
+//!
+//! A gain lineup toolbox for RF cascade analysis and signal chain modeling.
+//!
+//! This crate provides types and functions for computing cascaded gain, noise figure,
+//! IP3, dynamic range, and compression through a chain of RF blocks (amplifiers,
+//! attenuators, filters, mixers, etc.).
+//!
+//! Use `gainlineup` for ordered RF hardware chains. Use `touchstone` for `.sNp`
+//! S-parameter files and network matrices, `linkbudget` for end-to-end radio
+//! link performance, and `rfconversions` for standalone scalar RF conversions.
+//! P1dB and IP3 fields on [`Block`] are output-referred dBm values.
+//!
+//! # Quick Start
+//!
+//! ```
+//! use gainlineup::{Input, Block, cascade_vector_return_output};
+//!
+//! let input = Input::new(1.0e9, 1.0e6, -30.0, Some(270.0));
+//! let blocks = vec![
+//!     Block {
+//!         name: "LNA".to_string(),
+//!         gain_db: 30.0,
+//!         noise_figure_db: 1.5,
+//!         output_p1db_dbm: None,
+//!         output_ip3_dbm: None,
+//!     },
+//! ];
+//! let output = cascade_vector_return_output(input, blocks);
+//! assert_eq!(output.signal_power_dbm, 0.0);
+//! ```
+
+mod block;
+
+/// Command-line interface for the gainlineup tool.
+#[cfg(feature = "cli")]
+#[allow(missing_docs)]
+pub mod cli;
+mod constants;
+mod file_operations;
+mod input;
+mod node;
+mod open;
+
+#[cfg(feature = "plot")]
+mod plot;
+
+mod amplifier_model;
+mod sweep;
+
+pub use amplifier_model::{AmplifierModel, AmplifierModelBuilder, AmplifierPoint};
+pub use block::{Block, Imd3Point};
+pub use input::Input;
+pub use node::{DynamicRange, SignalNode};
+pub use sweep::{
+    cascade_frequency_sweep, FrequencyBlock, FrequencySample, FrequencySweep, FrequencySweepPoint,
+    SweepError,
+};
+
+/// Cascade a vector of blocks and return only the final output [`SignalNode`].
+///
+/// # Examples
+///
+/// ```
+/// use gainlineup::{Input, Block, cascade_vector_return_output};
+///
+/// let input = Input::new(1.0e9, 1.0e6, -30.0, Some(270.0));
+/// let blocks = vec![
+///     Block {
+///         name: "LNA".to_string(),
+///         gain_db: 30.0,
+///         noise_figure_db: 1.5,
+///         output_p1db_dbm: None,
+///         output_ip3_dbm: None,
+///     },
+///     Block {
+///         name: "Attenuator".to_string(),
+///         gain_db: -6.0,
+///         noise_figure_db: 6.0,
+///         output_p1db_dbm: None,
+///         output_ip3_dbm: None,
+///     },
+/// ];
+/// let output = cascade_vector_return_output(input, blocks);
+/// assert_eq!(output.signal_power_dbm, -6.0); // -30 + 30 - 6
+/// assert_eq!(output.cumulative_gain_db, 24.0);
+/// ```
+#[doc(alias = "cascade")]
+#[doc(alias = "signal chain")]
+#[doc(alias = "gain lineup")]
+#[must_use]
+pub fn cascade_vector_return_output(input: Input, blocks: Vec<Block>) -> SignalNode {
+    tracing::debug!(
+        num_blocks = blocks.len(),
+        input_power_dbm = input.power_dbm,
+        "Starting cascade"
+    );
+    let mut cascading_signal: Option<SignalNode> = None;
+
+    for (i, block) in blocks.iter().enumerate() {
+        let next = match &cascading_signal {
+            Some(previous) => previous.cascade_block(block),
+            None => input.cascade_block(block),
+        };
+        tracing::trace!(
+            stage = i,
+            block = %block.name,
+            signal_dbm = next.signal_power_dbm,
+            gain_db = next.cumulative_gain_db,
+            nf_db = next.cumulative_noise_figure_db,
+            "Stage output"
+        );
+        cascading_signal = Some(next);
+    }
+    let cascading_signal = cascading_signal.unwrap_or_default();
+
+    tracing::debug!(
+        output_power_dbm = cascading_signal.signal_power_dbm,
+        cumulative_gain_db = cascading_signal.cumulative_gain_db,
+        cumulative_nf_db = cascading_signal.cumulative_noise_figure_db,
+        "Cascade complete"
+    );
+    cascading_signal
+}
+
+/// Cascade a vector of blocks and return a [`SignalNode`] for each stage output.
+///
+/// # Examples
+///
+/// ```
+/// use gainlineup::{Input, Block, cascade_vector_return_vector};
+///
+/// let input = Input::new(1.0e9, 1.0e6, -30.0, Some(270.0));
+/// let blocks = vec![
+///     Block {
+///         name: "LNA".to_string(),
+///         gain_db: 30.0,
+///         noise_figure_db: 1.5,
+///         output_p1db_dbm: None,
+///         output_ip3_dbm: None,
+///     },
+///     Block {
+///         name: "Filter".to_string(),
+///         gain_db: -3.0,
+///         noise_figure_db: 3.0,
+///         output_p1db_dbm: None,
+///         output_ip3_dbm: None,
+///     },
+/// ];
+/// let nodes = cascade_vector_return_vector(input, blocks);
+/// assert_eq!(nodes.len(), 2);
+/// assert_eq!(nodes[0].signal_power_dbm, 0.0);  // after LNA
+/// assert_eq!(nodes[1].signal_power_dbm, -3.0);  // after filter
+/// ```
+#[doc(alias = "cascade")]
+#[doc(alias = "signal chain")]
+#[must_use]
+pub fn cascade_vector_return_vector(input: Input, blocks: Vec<Block>) -> Vec<SignalNode> {
+    tracing::debug!(
+        num_blocks = blocks.len(),
+        input_power_dbm = input.power_dbm,
+        "Starting cascade (vector output)"
+    );
+    let mut node_vector = Vec::with_capacity(blocks.len());
+    for block in &blocks {
+        push_cascade_node(&input, block, &mut node_vector);
+    }
+    node_vector
+}
+
+// Keep the previous stage in the result vector instead of cloning its name.
+fn push_cascade_node(input: &Input, block: &Block, nodes: &mut Vec<SignalNode>) {
+    let next = match nodes.last() {
+        Some(previous) => previous.cascade_block(block),
+        None => input.cascade_block(block),
+    };
+    tracing::trace!(
+        stage = nodes.len(),
+        block = %block.name,
+        signal_dbm = next.signal_power_dbm,
+        gain_db = next.cumulative_gain_db,
+        nf_db = next.cumulative_noise_figure_db,
+        "Stage output"
+    );
+    nodes.push(next);
+}
+
+/// Sweep input power through a cascade of blocks and return the AM-AM curve.
+///
+/// For each input power, the signal is passed through every block in sequence
+/// using each block's compression model. Returns Vec of `(Pin_dBm, Pout_dBm)`.
+///
+/// # Examples
+///
+/// ```
+/// use gainlineup::{Block, cascade_am_am_sweep};
+///
+/// let blocks = vec![
+///     Block {
+///         name: "LNA".to_string(),
+///         gain_db: 20.0,
+///         noise_figure_db: 3.0,
+///         output_p1db_dbm: Some(10.0),
+///         output_ip3_dbm: None,
+///     },
+/// ];
+/// let sweep = cascade_am_am_sweep(&blocks, -40.0, -20.0, 10.0);
+/// assert_eq!(sweep.len(), 3);
+/// assert!((sweep[0].1 - (-20.0)).abs() < 0.01); // -40 + 20 = -20 (linear)
+/// ```
+#[doc(alias = "P1dB")]
+#[doc(alias = "compression")]
+#[must_use]
+pub fn cascade_am_am_sweep(
+    blocks: &[Block],
+    start_dbm: f64,
+    stop_dbm: f64,
+    step_db: f64,
+) -> Vec<(f64, f64)> {
+    let mut powers = vec![];
+    let mut pin = start_dbm;
+    while pin <= stop_dbm + step_db * 0.01 {
+        powers.push(pin);
+        pin += step_db;
+    }
+    tracing::debug!(
+        num_blocks = blocks.len(),
+        num_points = powers.len(),
+        start_dbm,
+        stop_dbm,
+        step_db,
+        "AM-AM sweep"
+    );
+    powers
+        .iter()
+        .map(|&pin| {
+            let mut power = pin;
+            for block in blocks {
+                power = block.output_power(power);
+            }
+            (pin, power)
+        })
+        .collect()
+}
+
+/// Sweep input power through a cascade and return gain compression curve.
+///
+/// Returns Vec of `(Pin_dBm, Gain_dB)` showing total cascade gain vs. input power.
+///
+/// # Examples
+///
+/// ```
+/// use gainlineup::{Block, cascade_gain_compression_sweep};
+///
+/// let blocks = vec![
+///     Block {
+///         name: "Amp".to_string(),
+///         gain_db: 20.0,
+///         noise_figure_db: 3.0,
+///         output_p1db_dbm: Some(10.0),
+///         output_ip3_dbm: None,
+///     },
+/// ];
+/// let sweep = cascade_gain_compression_sweep(&blocks, -40.0, 0.0, 10.0);
+/// assert!((sweep[0].1 - 20.0).abs() < 0.01); // full gain at low power
+/// assert!(sweep.last().unwrap().1 < 20.0);    // compressed at high power
+/// ```
+#[doc(alias = "gain compression")]
+#[must_use]
+pub fn cascade_gain_compression_sweep(
+    blocks: &[Block],
+    start_dbm: f64,
+    stop_dbm: f64,
+    step_db: f64,
+) -> Vec<(f64, f64)> {
+    cascade_am_am_sweep(blocks, start_dbm, stop_dbm, step_db)
+        .iter()
+        .map(|&(pin, pout)| (pin, pout - pin))
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn two_part_node_cascade_vector_return_output() {
+        let input_power: f64 = -30.0;
+        let input = super::Input {
+            power_dbm: input_power,
+            frequency_hz: 1.0e9, // 1 GHz
+            bandwidth_hz: 0.0,   // CW
+            noise_temperature_k: Some(270.0),
+        };
+        let amplifier = super::Block {
+            name: "Low Noise Amplifier".to_string(),
+            gain_db: 30.0,
+            noise_figure_db: 3.0,
+            output_p1db_dbm: None,
+            output_ip3_dbm: None,
+        };
+        let attenuator = super::Block {
+            name: "Attenuator".to_string(),
+            gain_db: -6.0,
+            noise_figure_db: 6.0,
+            output_p1db_dbm: None,
+            output_ip3_dbm: None,
+        };
+        let blocks = vec![amplifier, attenuator];
+        let output_node = super::cascade_vector_return_output(input, blocks);
+
+        assert_eq!(output_node.signal_power_dbm, -6.0);
+        assert_eq!(output_node.cumulative_gain_db, 24.0);
+
+        assert_eq!(output_node.name, "Attenuator Output");
+
+        // round to 3 decimal places for comparison, because floating point math is not exact
+        let rounded_noise_figure = (output_node.cumulative_noise_figure_db * 1e3).round() / 1e3;
+        assert_eq!(rounded_noise_figure, 3.006);
+    }
+
+    #[test]
+    fn two_part_node_cascade_vector_return_vector() {
+        let input_power: f64 = -30.0;
+        let input = super::Input {
+            power_dbm: input_power,
+            frequency_hz: 1.0e9, // 1 GHz
+            bandwidth_hz: 0.0,   // CW
+            noise_temperature_k: Some(270.0),
+        };
+        let amplifier = super::Block {
+            name: "Low Noise Amplifier".to_string(),
+            gain_db: 30.0,
+            noise_figure_db: 3.0,
+            output_p1db_dbm: None,
+            output_ip3_dbm: None,
+        };
+        let attenuator = super::Block {
+            name: "Attenuator".to_string(),
+            gain_db: -6.0,
+            noise_figure_db: 6.0,
+            output_p1db_dbm: None,
+            output_ip3_dbm: None,
+        };
+        let blocks = vec![amplifier, attenuator];
+        let cascade_vector = super::cascade_vector_return_vector(input, blocks);
+
+        let output_node = cascade_vector.last().unwrap();
+        assert_eq!(output_node.signal_power_dbm, -6.0);
+        assert_eq!(output_node.cumulative_gain_db, 24.0);
+
+        assert_eq!(output_node.name, "Attenuator Output");
+
+        // round to 3 decimal places for comparison, because floating point math is not exact
+        let rounded_noise_figure = (output_node.cumulative_noise_figure_db * 1e3).round() / 1e3;
+        assert_eq!(rounded_noise_figure, 3.006);
+    }
+
+    #[test]
+    fn cascade_am_am_linear() {
+        let blocks = vec![
+            super::Block {
+                name: "LNA".to_string(),
+                gain_db: 20.0,
+                noise_figure_db: 3.0,
+                output_p1db_dbm: None,
+                output_ip3_dbm: None,
+            },
+            super::Block {
+                name: "Atten".to_string(),
+                gain_db: -6.0,
+                noise_figure_db: 6.0,
+                output_p1db_dbm: None,
+                output_ip3_dbm: None,
+            },
+        ];
+        let sweep = super::cascade_am_am_sweep(&blocks, -40.0, -20.0, 10.0);
+        assert_eq!(sweep.len(), 3);
+        // Total gain = 20 - 6 = 14 dB
+        assert!((sweep[0].1 - (-26.0)).abs() < 0.01); // -40 + 14 = -26
+        assert!((sweep[1].1 - (-16.0)).abs() < 0.01); // -30 + 14 = -16
+        assert!((sweep[2].1 - (-6.0)).abs() < 0.01); // -20 + 14 = -6
+    }
+
+    #[test]
+    fn cascade_am_am_with_compression() {
+        let blocks = vec![
+            super::Block {
+                name: "LNA".to_string(),
+                gain_db: 30.0,
+                noise_figure_db: 3.0,
+                output_p1db_dbm: Some(5.0),
+                output_ip3_dbm: None,
+            },
+            super::Block {
+                name: "Driver".to_string(),
+                gain_db: 10.0,
+                noise_figure_db: 5.0,
+                output_p1db_dbm: Some(15.0),
+                output_ip3_dbm: None,
+            },
+        ];
+        let sweep = super::cascade_am_am_sweep(&blocks, -50.0, 0.0, 10.0);
+        // At -50: LNA out = -20, Driver out = -10 (linear)
+        assert!((sweep[0].1 - (-10.0)).abs() < 0.01);
+        // At high power, should compress
+        let last = sweep.last().unwrap();
+        assert!(last.1 <= 16.0, "Should compress at high input");
+    }
+
+    #[test]
+    fn cascade_gain_compression() {
+        let blocks = vec![super::Block {
+            name: "Amp".to_string(),
+            gain_db: 20.0,
+            noise_figure_db: 3.0,
+            output_p1db_dbm: Some(10.0),
+            output_ip3_dbm: None,
+        }];
+        let sweep = super::cascade_gain_compression_sweep(&blocks, -40.0, 0.0, 10.0);
+        // At -40: linear, gain = 20
+        assert!((sweep[0].1 - 20.0).abs() < 0.01);
+        // At 0: compressed, gain < 20
+        let last = sweep.last().unwrap();
+        assert!(last.1 < 20.0, "Gain should compress at high input");
+    }
+
+    #[test]
+    fn two_part_node_cascade_vector_return_vector_with_compression() {
+        let input_power: f64 = -30.0;
+        let input = super::Input {
+            power_dbm: input_power,
+            frequency_hz: 1.0e9, // 1 GHz
+            bandwidth_hz: 0.0,   // CW
+            noise_temperature_k: Some(270.0),
+        };
+        let low_noise_amplifier = super::Block {
+            name: "Low Noise Amplifier".to_string(),
+            gain_db: 30.0,
+            noise_figure_db: 3.0,
+            output_p1db_dbm: Some(5.0),
+            output_ip3_dbm: None,
+        };
+        let attenuator = super::Block {
+            name: "Attenuator".to_string(),
+            gain_db: -6.0,
+            noise_figure_db: 6.0,
+            output_p1db_dbm: None,
+            output_ip3_dbm: None,
+        };
+        let high_power_amplifier = super::Block {
+            name: "High Power Amplifier".to_string(),
+            gain_db: 30.0,
+            noise_figure_db: 3.0,
+            output_p1db_dbm: Some(20.0),
+            output_ip3_dbm: None,
+        };
+        let blocks = vec![low_noise_amplifier, attenuator, high_power_amplifier];
+        let cascade_vector = super::cascade_vector_return_vector(input, blocks);
+
+        let output_node = cascade_vector.last().unwrap();
+        assert_eq!(output_node.signal_power_dbm, 21.0);
+        assert_eq!(output_node.cumulative_gain_db, 51.0);
+
+        assert_eq!(output_node.name, "High Power Amplifier Output");
+
+        // round to 3 decimal places for comparison, because floating point math is not exact
+        let rounded_noise_figure = (output_node.cumulative_noise_figure_db * 1e3).round() / 1e3;
+        assert_eq!(rounded_noise_figure, 3.015);
+    }
+}

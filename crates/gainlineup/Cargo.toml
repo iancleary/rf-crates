@@ -1,0 +1,53 @@
+[package]
+authors = ["Ian Cleary <iancleary@hey.com>"]
+description = "A Gain Lineup toolbox for RF Modeling"
+documentation = "https://docs.rs/gainlineup"
+edition = "2021"
+homepage = "https://github.com/iancleary/gainlineup"
+keywords = ["rf", "gain", "lineup", "microwave", "receiver"]
+categories = ["command-line-utilities", "science"]
+license = "MIT"
+name = "gainlineup"
+readme = "README.md"
+repository = "https://github.com/iancleary/gainlineup"
+rust-version = "1.85"
+version = "0.23.1"
+autoexamples = false
+exclude = [
+    ".vscode/*",
+    "files/**/*.html",
+    "files/**/*.png",
+    "files/**/js/*",
+]
+
+[[bin]]
+name = "gainlineup"
+path = "src/main.rs"
+required-features = ["cli"]
+
+[[example]]
+name = "transceiver_sweeps"
+path = "demos/transceiver_sweeps.rs"
+
+[[example]]
+name = "gnss_receiver"
+path = "demos/gnss_receiver.rs"
+
+[[bench]]
+name = "cascade_performance"
+harness = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rfconversions = "0.7.4"
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.9.8"
+touchstone = "0.14.4"
+tracing = { version = "0.1.44", default-features = false }
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"], optional = true }
+
+[features]
+default = ["cli", "plot"]
+cli = ["dep:tracing-subscriber"]
+plot = []

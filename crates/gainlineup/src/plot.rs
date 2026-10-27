@@ -1,0 +1,201 @@
+use std::fs::File;
+use std::io::Write;
+use std::path::Path;
+
+use crate::Block;
+use crate::Input;
+use crate::SignalNode;
+
+fn format_hz(hz: f64) -> (f64, String) {
+    if hz >= 1e12 {
+        (hz / 1e12, "THz".to_string())
+    } else if hz >= 1e9 {
+        (hz / 1e9, "GHz".to_string())
+    } else if hz >= 1e6 {
+        (hz / 1e6, "MHz".to_string())
+    } else if hz >= 1e3 {
+        (hz / 1e3, "kHz".to_string())
+    } else {
+        (hz, "Hz".to_string())
+    }
+}
+
+pub fn generate_html_table(
+    input: &Input,
+    cascade: &[SignalNode],
+    blocks: &[Block],
+    output_path_str: &str,
+) -> Result<(), std::io::Error> {
+    let path = Path::new(output_path_str);
+    tracing::debug!(
+        output_path = output_path_str,
+        num_stages = cascade.len(),
+        "Generating HTML table"
+    );
+    let mut file = File::create(path)?;
+
+    writeln!(file, "<!DOCTYPE html>")?;
+    writeln!(file, "<html>")?;
+    writeln!(file, "<head>")?;
+    writeln!(file, "<title>Gain Lineup Cascade</title>")?;
+    writeln!(file, "<style>")?;
+    writeln!(file, "table {{ border-collapse: collapse; }}")?;
+    writeln!(file, ".cascade {{ width: 100%; }}")?;
+    writeln!(file, ".parameters {{ width: auto; }}")?;
+    writeln!(file, ".parameters td:nth-child(2) {{ text-align: right; }}")?;
+    writeln!(
+        file,
+        "th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}"
+    )?;
+    writeln!(file, "th {{ background-color: #f2f2f2; }}")?;
+    writeln!(file, "tr:nth-child(even) {{ background-color: #f9f9f9; }}")?;
+    writeln!(
+        file,
+        "table.cascade tr:first-child th {{ text-align: center; }}"
+    )?;
+    writeln!(file, "</style>")?;
+    writeln!(file, "</head>")?;
+    writeln!(file, "<body>")?;
+    writeln!(file, "<h1>Gain Lineup Cascade</h1>")?;
+
+    writeln!(file, "<h2>Input Parameters</h2>")?;
+    writeln!(file, "<table class=\"parameters\">")?;
+    writeln!(file, "<tr>")?;
+    writeln!(file, "<th>Parameter</th>")?;
+    writeln!(file, "<th>Value</th>")?;
+    writeln!(file, "<th>Unit</th>")?;
+    writeln!(file, "</tr>")?;
+    writeln!(file, "<tr>")?;
+    writeln!(file, "<td>Input Power</td>")?;
+    writeln!(file, "<td>{:.2}</td>", input.power_dbm)?;
+    writeln!(file, "<td>dBm</td>")?;
+    writeln!(file, "</tr>")?;
+    writeln!(file, "<tr>")?;
+    writeln!(file, "<td>Frequency</td>")?;
+    let (freq_val, freq_unit) = format_hz(input.frequency_hz);
+    writeln!(file, "<td>{:.2}</td>", freq_val)?;
+    writeln!(file, "<td>{}</td>", freq_unit)?;
+    writeln!(file, "</tr>")?;
+    writeln!(file, "<tr>")?;
+    writeln!(file, "<td>Bandwidth</td>")?;
+    if input.bandwidth_hz > 0.0 {
+        let (bw_val, bw_unit) = format_hz(input.bandwidth_hz);
+        writeln!(file, "<td>{:.2}</td>", bw_val)?;
+        writeln!(file, "<td>{}</td>", bw_unit)?;
+    } else {
+        let (bw_val, bw_unit) = format_hz(0.0);
+        writeln!(file, "<td>(CW) {:.2}</td>", bw_val)?;
+        writeln!(file, "<td>{}</td>", bw_unit)?;
+    }
+    writeln!(file, "</tr>")?;
+    writeln!(file, "</table>")?;
+    writeln!(file, "<br>")?;
+
+    writeln!(file, "<h2>Signal Cascade</h2>")?;
+    writeln!(file, "<table class=\"cascade\">")?;
+    writeln!(file, "<tr>")?;
+    writeln!(file, "<th colspan=\"1\">Identity</th>")?;
+    writeln!(file, "<th colspan=\"4\">Block Definition</th>")?;
+    writeln!(file, "<th colspan=\"3\">Signal Power</th>")?;
+    writeln!(file, "<th colspan=\"2\">Cumulative Stats</th>")?;
+    writeln!(file, "<th colspan=\"6\">Noise Analysis</th>")?;
+    writeln!(file, "<th colspan=\"1\">Signal Quality</th>")?;
+    writeln!(file, "</tr>")?;
+    writeln!(file, "<tr>")?;
+    writeln!(file, "<th>Stage</th>")?;
+    writeln!(file, "<th>Name</th>")?;
+    writeln!(file, "<th>Gain (dB)</th>")?;
+    writeln!(file, "<th>NF (dB)</th>")?;
+    writeln!(file, "<th>Output P1dB (dBm)</th>")?;
+    writeln!(file, "<th>Input Power (dBm)</th>")?;
+    writeln!(file, "<th>Output Power (dBm)</th>")?;
+    writeln!(file, "<th>Power Gain (dB)</th>")?;
+    writeln!(file, "<th>Cumulative Gain (dB)</th>")?;
+    writeln!(file, "<th>Cumulative NF (dB)</th>")?;
+    writeln!(file, "<th>Input Noise Temperature (K)</th>")?;
+    writeln!(file, "<th>Output Noise Temperature (K)</th>")?;
+    writeln!(file, "<th>Input Noise Spectral Density (dBm/Hz)</th>")?;
+    writeln!(file, "<th>Output Noise Spectral Density (dBm/Hz)</th>")?;
+    writeln!(file, "<th>Input Noise Power (dBm)</th>")?;
+    writeln!(file, "<th>Output Noise Power (dBm)</th>")?;
+    writeln!(file, "<th>Signal-to-Noise Ratio (dB)</th>")?;
+    writeln!(file, "</tr>")?;
+
+    for (i, node) in cascade.iter().enumerate() {
+        writeln!(file, "<tr>")?;
+        writeln!(file, "<td>{}</td>", i)?;
+        writeln!(file, "<td>{}</td>", node.name)?;
+
+        let block = &blocks[i];
+
+        writeln!(file, "<td>{:.2}</td>", block.gain_db)?;
+        writeln!(file, "<td>{:.2}</td>", block.noise_figure_db)?;
+        if let Some(p1db) = block.output_p1db_dbm {
+            writeln!(file, "<td>{:.2}</td>", p1db)?;
+        } else {
+            writeln!(file, "<td>-</td>")?;
+        }
+
+        let actual_input_power = if i == 0 {
+            input.power_dbm
+        } else {
+            cascade[i - 1].signal_power_dbm
+        };
+
+        writeln!(file, "<td>{:.2}</td>", actual_input_power)?;
+        writeln!(file, "<td>{:.2}</td>", node.signal_power_dbm)?;
+        writeln!(file, "<td>{:.2}</td>", block.power_gain(actual_input_power))?;
+        writeln!(file, "<td>{:.2}</td>", node.cumulative_gain_db)?;
+        writeln!(file, "<td>{:.2}</td>", node.cumulative_noise_figure_db)?;
+
+        // input noise temperature
+        if i == 0 {
+            if let Some(noise_temperature) = input.noise_temperature_k {
+                writeln!(file, "<td>{:.2}</td>", noise_temperature)?;
+            } else {
+                writeln!(file, "<td>-</td>")?;
+            }
+        } else if let Some(noise_temperature) = cascade[i - 1].cumulative_noise_temperature {
+            writeln!(file, "<td>{:.2}</td>", noise_temperature)?;
+        } else {
+            writeln!(file, "<td>-</td>")?;
+        }
+
+        // output noise temperature
+        if let Some(noise_temperature) = cascade[i].cumulative_noise_temperature {
+            writeln!(file, "<td>{:.2}</td>", noise_temperature)?;
+        } else {
+            writeln!(file, "<td>-</td>")?;
+        }
+
+        if i == 0 {
+            writeln!(file, "<td>{:.2}</td>", input.noise_spectral_density())?;
+        } else {
+            writeln!(
+                file,
+                "<td>{:.2}</td>",
+                cascade[i - 1].noise_spectral_density()
+            )?;
+        }
+        writeln!(file, "<td>{:.2}</td>", node.noise_spectral_density())?;
+
+        // input noise power
+        if i == 0 {
+            writeln!(file, "<td>{:.2}</td>", input.noise_power())?;
+        } else {
+            writeln!(file, "<td>{:.2}</td>", cascade[i - 1].noise_power_dbm)?;
+        }
+        writeln!(file, "<td>{:.2}</td>", node.noise_power_dbm)?;
+        writeln!(file, "<td>{:.2}</td>", node.signal_to_noise_ratio_db())?;
+        writeln!(file, "</tr>")?;
+    }
+
+    writeln!(file, "</table>")?;
+    writeln!(file, "</body>")?;
+    writeln!(file, "</html>")?;
+
+    Ok(())
+}
+
+// run bash update_plots.sh to update all plots, and show this working
+// no automated testing planned

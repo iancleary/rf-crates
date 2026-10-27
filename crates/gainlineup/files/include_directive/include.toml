@@ -1,0 +1,30 @@
+input_power_dbm = -60.0
+frequency_hz = 6.0e9
+
+[[blocks]]
+type = "explicit"
+name = "Low Noise Amplifier"
+gain_db = 20.0
+noise_figure_db = 3.0
+
+[[blocks]]
+type = "touchstone"
+file_path = "ntwk3.s2p"
+name = "Touchstone Block (ntwk3.s2p)"
+
+[[blocks]]
+type = "explicit"
+name = "Line Amplifier"
+gain_db = 10.0
+noise_figure_db = 5.0
+
+
+[[blocks]]
+type = "explicit"
+name = "Line Amplifier"
+gain_db = 10.0
+noise_figure_db = 5.0
+
+[[blocks]]
+type = "include"
+path = "sub_config.toml"

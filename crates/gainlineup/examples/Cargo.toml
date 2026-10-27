@@ -1,0 +1,15 @@
+[package]
+authors = ["Ian Cleary <rust@iancleary.me>"]
+description = "A Gain Lineup toolbox for RF Modeling"
+documentation = "https://docs.rs/gainlineup"
+edition = "2021"
+homepage = "https://github.com/iancleary/gainlineup"
+license = "MIT"
+name = "gainlineup-example"
+repository = "https://github.com/iancleary/gainlineup"
+version = "0.0.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+gainlineup = { path = "../" }
