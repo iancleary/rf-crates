@@ -82,6 +82,12 @@ let wavelength = frequency::frequency_to_wavelength(1.0e9); // 0.299792458 m
 
 Convert between noise figure (dB), noise factor (linear), and noise temperature (K). Compute noise power from bandwidth.
 
+The direct NF↔temperature helpers avoid a noise factor rounded to one. They
+preserve the algebraic negative-temperature domain: −290 K gives −∞ dB and
+lower temperatures give NaN. Both signed-zero inputs return +0; NaN propagates.
+See [noise conversion accuracy](docs/noise-conversion-accuracy.md) for the
+numerical model, range limits, and rerunnable candidate comparisons.
+
 ```rust
 use rfconversions::noise;
 
@@ -96,6 +102,12 @@ let factor = noise::noise_factor_from_noise_temperature(290.0); // 2.0
 // Noise temperature ↔ Noise figure
 let temp2 = noise::noise_temperature_from_noise_figure(6.0);  // ~864.51 K
 let nf_db2 = noise::noise_figure_from_noise_temperature(290.0); // ~3.01 dB
+
+// Direct conversions retain tiny differences (T₀ = 290 K).
+let tiny_temp = noise::noise_temperature_from_noise_figure(1e-16);
+assert!((tiny_temp / 6.677496769682733e-15 - 1.0).abs() < 1e-14);
+let tiny_nf = noise::noise_figure_from_noise_temperature(1e-16);
+assert!((tiny_nf / 1.4975671789767304e-18 - 1.0).abs() < 1e-14);
 
 // Noise power (W) from temperature (K) and bandwidth (Hz)
 let noise_power = noise::noise_power_from_bandwidth(290.0, 100.0e6); // kTB in watts
@@ -213,9 +225,9 @@ let t0 = constants::T0;             // 290.0 K (standard reference)
 | `noise` | `noise_figure_from_noise_factor(f64) → f64` | Factor → Figure (dB) |
 | `noise` | `noise_factor_from_noise_figure(f64) → f64` | Figure → Factor |
 | `noise` | `noise_temperature_from_noise_factor(f64) → f64` | Factor → Temperature (K) |
-| `noise` | `noise_temperature_from_noise_figure(f64) → f64` | Figure → Temperature (K) |
+| `noise` | `noise_temperature_from_noise_figure(f64) → f64` | Direct figure (dB) → equivalent temperature (K), T₀ = 290 K |
 | `noise` | `noise_factor_from_noise_temperature(f64) → f64` | Temperature → Factor |
-| `noise` | `noise_figure_from_noise_temperature(f64) → f64` | Temperature → Figure (dB) |
+| `noise` | `noise_figure_from_noise_temperature(f64) → f64` | Direct equivalent temperature (K) → figure (dB), T₀ = 290 K |
 | `noise` | `noise_power_from_bandwidth(f64, f64) → f64` | Temperature (K), bandwidth (Hz) → noise power (W) |
 | `noise` | `cascade_noise_factor(&[(f64, f64)]) → f64` | Friis cascade (linear) |
 | `noise` | `cascade_noise_figure(&[(f64, f64)]) → f64` | Friis cascade (dB) |

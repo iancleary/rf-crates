@@ -97,6 +97,14 @@ fn noise_figure_from_noise_temperature() {
 }
 
 #[test]
+fn tiny_direct_noise_conversions() {
+    let tiny_temp = rfconversions::noise::noise_temperature_from_noise_figure(1e-16);
+    assert!((tiny_temp / 6.677496769682733e-15 - 1.0).abs() < 1e-14);
+    let tiny_nf = rfconversions::noise::noise_figure_from_noise_temperature(1e-16);
+    assert!((tiny_nf / 1.4975671789767304e-18 - 1.0).abs() < 1e-14);
+}
+
+#[test]
 fn noise_power_from_bandwidth() {
     let noise_power = rfconversions::noise::noise_power_from_bandwidth(290.0, 100.0e6);
     // Verify it's kTB using exact Boltzmann constant

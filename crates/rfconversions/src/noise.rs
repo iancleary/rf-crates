@@ -15,7 +15,12 @@ pub fn noise_temperature_from_noise_factor(noise_factor: f64) -> f64 {
     crate::constants::T0 * (noise_factor - 1.0)
 }
 
-/// Convert noise figure (dB) to noise temperature (Kelvin).
+/// Convert noise figure (dB) to equivalent noise temperature (Kelvin).
+///
+/// Uses T₀ = 290 K and computes the difference directly, retaining tiny nonzero
+/// figures that would round to a noise factor of one. Negative figures retain
+/// their algebraic negative temperatures; −∞ gives −290 K, +∞ gives +∞, and
+/// NaN propagates. Either signed zero input returns +0 K.
 ///
 /// # Examples
 ///
@@ -23,13 +28,22 @@ pub fn noise_temperature_from_noise_factor(noise_factor: f64) -> f64 {
 /// use rfconversions::noise::noise_temperature_from_noise_figure;
 /// let temp = noise_temperature_from_noise_figure(3.0);
 /// assert!((temp - 288.626).abs() < 0.001);
+/// let tiny = noise_temperature_from_noise_figure(1e-16);
+/// assert!((tiny / 6.677496769682733e-15 - 1.0).abs() < 1e-14);
 /// ```
 #[doc(alias = "NF")]
 #[doc(alias = "Te")]
 #[must_use]
 pub fn noise_temperature_from_noise_figure(noise_figure: f64) -> f64 {
-    let noise_factor: f64 = noise_factor_from_noise_figure(noise_figure);
-    noise_temperature_from_noise_factor(noise_factor)
+    if noise_figure == 0.0 {
+        return 0.0;
+    }
+    if noise_figure.abs() < f64::EPSILON {
+        // The quadratic correction is below rounding scale; combine factors
+        // before multiplying so a subnormal exponent is not rounded away.
+        return noise_figure * (crate::constants::T0 * (std::f64::consts::LN_10 / 10.0));
+    }
+    crate::constants::T0 * (noise_figure * (std::f64::consts::LN_10 / 10.0)).exp_m1()
 }
 
 /// Convert noise figure (dB) to noise factor (linear).
@@ -64,7 +78,13 @@ pub fn noise_factor_from_noise_temperature(noise_temperature: f64) -> f64 {
     1.0 + (noise_temperature / crate::constants::T0)
 }
 
-/// Convert noise temperature (Kelvin) to noise figure (dB).
+/// Convert equivalent noise temperature (Kelvin) to noise figure (dB).
+///
+/// Uses T₀ = 290 K and retains tiny temperatures without rounding a noise
+/// factor to one. The algebraic domain includes negative temperatures:
+/// −290 K gives −∞, lower values give NaN, +∞ gives +∞, and NaN propagates.
+/// Either signed zero input returns +0 dB; negative nonzero inputs that
+/// underflow may return −0 dB.
 ///
 /// # Examples
 ///
@@ -72,13 +92,27 @@ pub fn noise_factor_from_noise_temperature(noise_temperature: f64) -> f64 {
 /// use rfconversions::noise::noise_figure_from_noise_temperature;
 /// let nf = noise_figure_from_noise_temperature(290.0);
 /// assert!((nf - 3.0103).abs() < 0.001);
+/// let tiny = noise_figure_from_noise_temperature(1e-16);
+/// assert!((tiny / 1.4975671789767304e-18 - 1.0).abs() < 1e-14);
 /// ```
 #[doc(alias = "Te")]
 #[doc(alias = "NF")]
 #[must_use]
 pub fn noise_figure_from_noise_temperature(noise_temperature: f64) -> f64 {
-    let noise_factor: f64 = noise_factor_from_noise_temperature(noise_temperature);
-    noise_figure_from_noise_factor(noise_factor)
+    if noise_temperature == 0.0 {
+        return 0.0;
+    }
+    if noise_temperature.abs() < crate::constants::T0 * f64::EPSILON {
+        // Avoid rounding Te/T₀ before rescaling a subnormal result.
+        return noise_temperature * ((10.0 / std::f64::consts::LN_10) / crate::constants::T0);
+    }
+    let logarithm = if noise_temperature < -crate::constants::T0 / 2.0 {
+        // Near −T₀ the subtraction is exact (Sterbenz), unlike 1 + Te/T₀.
+        ((noise_temperature + crate::constants::T0) / crate::constants::T0).ln()
+    } else {
+        (noise_temperature / crate::constants::T0).ln_1p()
+    };
+    (10.0 / std::f64::consts::LN_10) * logarithm
 }
 
 /// Convert noise factor (linear) to noise figure (dB).
@@ -317,7 +351,8 @@ mod tests {
 
         let noise_temperature: f64 = super::noise_temperature_from_noise_figure(noise_figure);
 
-        assert_eq!(288.62607134097505, noise_temperature);
+        // Exact-input Decimal reference; allow ordinary libm rounding.
+        assert!((288.6260713409751 - noise_temperature).abs() < 1e-12);
     }
 
     #[test]
@@ -326,7 +361,7 @@ mod tests {
 
         let noise_temperature: f64 = super::noise_temperature_from_noise_figure(noise_figure);
 
-        assert_eq!(864.510794605142, noise_temperature);
+        assert!((864.510794605142 - noise_temperature).abs() < 2e-12);
     }
 
     #[test]
@@ -371,7 +406,7 @@ mod tests {
 
         let noise_figure: f64 = super::noise_figure_from_noise_temperature(noise_temperature);
 
-        assert_eq!(6.0, noise_figure);
+        assert!((6.0 - noise_figure).abs() < 2e-14);
     }
 
     #[test]
@@ -380,7 +415,7 @@ mod tests {
 
         let noise_figure: f64 = super::noise_figure_from_noise_temperature(noise_temperature);
 
-        assert_eq!(3.010299956639812, noise_figure);
+        assert!((3.010299956639812 - noise_figure).abs() < 1e-14);
     }
 
     #[test]
