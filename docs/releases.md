@@ -27,8 +27,10 @@ Preparation and publication are separate:
    entry and verifies the published checksum against the uploaded archive.
 
 A GitHub release is the publishing request, **not proof that crates.io accepted
-it**. Treat a release as complete only after the publication workflow succeeds
-and the exact package version is visible in the index.
+it**. Treat a release as complete only after publication and checksum verification
+succeed. Normally the workflow establishes both. A post-upload workflow failure
+requires the explicit read-only recovery below, with the failure and recovery
+recorded separately; never describe a failed workflow as a pass.
 
 ## Dependency order
 
@@ -122,7 +124,10 @@ all-feature Clippy, all-feature tests, library-only tests, independent numerical
 comparisons, warnings-denied documentation, all four package archives, and
 release builds. The publisher additionally verifies the selected artifact
 against real crates.io dependencies, rather than accepting only a local path
-build.
+build. Its target directory is isolated from workspace packaging. Archive lookup
+requires exactly one matching file beneath that target's `package/` directory:
+Cargo 1.99 stages publication archives under `package/tmp-crate/`, not directly
+under `package/`. Never accept a stale archive left by an earlier workspace build.
 
 Minimum-Rust-version metadata is preserved, but stable-toolchain CI does not
 certify every declared historical compiler. Do not describe these releases as
@@ -150,12 +155,32 @@ policy in `release_policy.py`, not in a divergent fork of the maintained runner.
   package before deciding to retry. If it is absent, an explicitly authorized
   failed-job rerun can repeat the guards and publish step.
 - **Upload succeeded but the index wait failed:** do not publish again. Rerun
-  only `wait-index`, inspect the uploaded archive checksum in the workflow, and
-  resolve the incomplete workflow record before the next release. An existing
-  registry version intentionally blocks blind publication retries.
+  only the checksum/index check. If the hosted archive is no longer available,
+  rebuild with `cargo publish --dry-run` from a clean checkout of the exact tag,
+  using a fresh dedicated target directory. Compare that archive, a downloaded
+  registry archive, and the index checksum; verify `.cargo_vcs_info.json` names
+  the tagged commit. Record the failed run and this read-only recovery before
+  continuing. An existing registry version blocks blind publication retries.
 - **Bad published package:** crates.io versions are immutable. A correction
   requires a new version; yanking or changing public metadata requires separate
   authorization. Local resets cannot undo publication.
+
+## First publication recovery record
+
+`rfconversions` 0.8.0 was accepted by crates.io in
+[run 40450587741](https://github.com/iancleary/rf-crates/actions/runs/40450587741).
+All shared checks, selected-package verification, and upload passed; the final
+checksum step failed because it assumed the archive lived directly in
+`target/package/`. The original run remains failed; the public tag was not moved
+and the package was not republished.
+
+A fresh-target dry-run from tagged commit
+`e125e93ba76739ccda53e05806830320c3a1c46f` reproduced the actual staging path. Its
+archive and the downloaded crates.io archive both matched the sparse-index
+SHA-256 `124797d8aee1373c8cc052f30713d118a56be9db9d37d6674d4939e61ebd3664`;
+the downloaded archive's VCS record named that clean tagged commit. The corrected
+workflow locates exactly one archive in its isolated publication target, and its
+checksum step was rerun successfully against the rebuilt release archive.
 
 The reusable execution checklist lives in
 [the crate release skill](../.agents/skills/release-rf-crate/SKILL.md).

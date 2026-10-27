@@ -37,6 +37,9 @@ or print that secret. Preserve independent package versions and MIT licenses.
 
 Keep complete workspace checks and selected-package registry dry-runs. The hosted
 publisher verifies the actual uploaded archive checksum in the sparse index.
+Its isolated publication target must contain exactly one selected archive; do not
+assume Cargo uses the same archive path as workspace packaging. After an upload,
+use the documented checksum-only recovery rather than rerunning publication.
 Do not claim that dry-run verifies token scope or that stable CI proves MSRV.
 
 Preparation failures restore original version files. After any public mutation,

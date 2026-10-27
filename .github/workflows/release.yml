@@ -22,6 +22,7 @@ jobs:
     timeout-minutes: 25
     env:
       CARGO_TERM_COLOR: always
+      CARGO_TARGET_DIR: ${{ runner.temp }}/rf-crate-publication
       RELEASE_TAG: ${{ github.event.release.tag_name }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -55,7 +56,14 @@ jobs:
         env:
           PACKAGE: ${{ steps.release.outputs.crate }}
           VERSION: ${{ steps.release.outputs.version }}
-        run: >-
-          uv run --offline --no-project scripts/release_policy.py
-          wait-index "$PACKAGE" "$VERSION" --timeout 600
-          --archive "target/package/$PACKAGE-$VERSION.crate"
+        run: |
+          mapfile -d '' -t archives < <(
+            find "$CARGO_TARGET_DIR/package" -type f -name "$PACKAGE-$VERSION.crate" -print0
+          )
+          if [ "${#archives[@]}" -ne 1 ]; then
+            echo "Expected one archive in the isolated publication target; found ${#archives[@]}." >&2
+            exit 1
+          fi
+          uv run --offline --no-project scripts/release_policy.py \
+            wait-index "$PACKAGE" "$VERSION" --timeout 600 \
+            --archive "${archives[0]}"
