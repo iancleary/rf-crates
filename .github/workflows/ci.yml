@@ -24,7 +24,7 @@ jobs:
       - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
       - name: Select stable Rust
         run: |
-          rustup update stable --profile minimal
+          rustup toolchain install stable --profile minimal
           rustup default stable
           rustup component add rustfmt clippy
       - name: Fetch locked build dependencies
