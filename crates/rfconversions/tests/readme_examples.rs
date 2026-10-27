@@ -118,6 +118,19 @@ fn noise_power_from_bandwidth() {
     assert_eq!(noise_power, expected);
 }
 
+#[test]
+fn hot_cold_receiver_calibration() {
+    use rfconversions::{noise, power};
+
+    let hot_dbm = -90.0;
+    let cold_dbm = -93.01029995663981;
+    let y = power::db_to_linear(hot_dbm - cold_dbm);
+    let te = noise::noise_temperature_from_y_factor(y, 290.0, 77.0);
+    assert!((te - 136.0).abs() < 1e-10);
+    let nf = noise::noise_figure_from_noise_temperature(te);
+    assert!((nf - 1.6701160120376283).abs() < 1e-12);
+}
+
 // === Section 4: P1dB ===
 
 #[test]

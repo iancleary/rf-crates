@@ -131,6 +131,71 @@ pub fn noise_figure_from_noise_factor(noise_factor: f64) -> f64 {
     crate::power::linear_to_db(noise_factor)
 }
 
+/// Infer equivalent receiver noise temperature (kelvin) from a hot/cold Y-factor.
+///
+/// `y` is the **linear detected power ratio** P_hot / P_cold, not dB or an
+/// RF voltage-amplitude ratio. `hot_kelvin` and `cold_kelvin` are effective load
+/// temperatures at the receiver input reference plane. The classical model is
+/// Y = (T_hot + T_e) / (T_cold + T_e), with unchanged gain and bandwidth.
+/// It does not correct for mismatch, source loss, or detector nonlinearity.
+///
+/// Returns NaN unless all arguments are finite, `y > 1`, and
+/// `hot_kelvin > cold_kelvin >= 0`. Negative inferred temperatures remain visible
+/// as diagnostics rather than being clamped. A mathematically overflowing result
+/// can be infinite. Near Y = 1 the measurement is intrinsically ill-conditioned:
+/// dT_e/dY = -(T_hot - T_cold)/(Y - 1)².
+///
+/// The relation follows Condon & Ransom, *Essential Radio Astronomy* (2016),
+/// [§3.6.6, equations (3.165)–(3.171)](https://www.cv.nrao.edu/~sransom/web/Ch3.html#S6.SS6),
+/// DOI: [10.1515/9781400881161](https://doi.org/10.1515/9781400881161).
+/// Solving it gives T_e = (T_hot - Y·T_cold)/(Y - 1).
+///
+/// # Examples
+///
+/// ```
+/// use rfconversions::{noise, power};
+/// let hot_dbm = -90.0;
+/// let cold_dbm = -93.01029995663981;
+/// let y = power::db_to_linear(hot_dbm - cold_dbm);
+/// let te = noise::noise_temperature_from_y_factor(y, 290.0, 77.0);
+/// assert!((te - 136.0).abs() < 1e-10);
+/// let nf = noise::noise_figure_from_noise_temperature(te);
+/// assert!((nf - 1.6701160120376283).abs() < 1e-12);
+/// ```
+#[doc(alias = "Y-factor")]
+#[doc(alias = "hot/cold")]
+#[doc(alias = "Te")]
+#[must_use]
+pub fn noise_temperature_from_y_factor(y: f64, hot_kelvin: f64, cold_kelvin: f64) -> f64 {
+    if !y.is_finite()
+        || !hot_kelvin.is_finite()
+        || !cold_kelvin.is_finite()
+        || y <= 1.0
+        || cold_kelvin < 0.0
+        || hot_kelvin <= cold_kelvin
+    {
+        return f64::NAN;
+    }
+
+    // Exact scaling protects subnormal numerator differences before division.
+    let scale = if hot_kelvin < 1.0 {
+        2.0_f64.powi(512)
+    } else {
+        1.0
+    };
+    let hot = hot_kelvin * scale;
+    let cold = cold_kelvin * scale;
+    let numerator = (-y).mul_add(cold, hot);
+    let temperature = if numerator.is_finite() {
+        numerator / (y - 1.0)
+    } else {
+        // A negative overflowing numerator implies Y > 2, so this quotient
+        // is bounded by hot and cannot overflow before subtracting cold.
+        (hot - cold) / (y - 1.0) - cold
+    };
+    temperature / scale
+}
+
 /// Calculate thermal noise power (watts) from temperature (kelvin) and bandwidth (hertz).
 ///
 /// Uses Boltzmann's constant k = 1.380649 × 10⁻²³ J/K.

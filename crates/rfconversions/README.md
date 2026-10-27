@@ -126,6 +126,30 @@ assert!((tiny_nf / 1.4975671789767304e-18 - 1.0).abs() < 1e-14);
 let noise_power = noise::noise_power_from_bandwidth(290.0, 100.0e6); // kTB in watts
 ```
 
+### Hot/cold receiver calibration
+
+Y is a **linear detected power ratio**, not amplitude or dB. Convert a pair of
+measured dBm readings to Y before inferring the input-referred receiver temperature:
+
+```rust
+use rfconversions::{noise, power};
+
+let hot_dbm = -90.0;
+let cold_dbm = -93.01029995663981;
+let y = power::db_to_linear(hot_dbm - cold_dbm);
+let te = noise::noise_temperature_from_y_factor(y, 290.0, 77.0);
+assert!((te - 136.0).abs() < 1e-10);
+let nf = noise::noise_figure_from_noise_temperature(te);
+assert!((nf - 1.6701160120376283).abs() < 1e-12);
+```
+
+All inputs must be finite, with `hot_kelvin > cold_kelvin >= 0` and `y > 1`;
+otherwise the result is NaN. Negative inferred temperatures are retained as
+diagnostics. The classical model assumes unchanged gain/bandwidth and effective
+load temperatures at the receiver input; it does not correct mismatch or source
+loss. See the [Y-factor calibration guide](docs/y-factor-calibration.md) for the
+source, numerical choices, and measurement limits near Y = 1.
+
 ## 4. P1dB Compression Point
 
 Convert between input and output 1 dB compression points.
@@ -248,6 +272,7 @@ let t0 = constants::T0;             // 290.0 K (standard reference)
 | `noise` | `cascade_noise_temperature(&[(f64, f64)]) → f64` | Friis cascade (Kelvin) |
 | `noise` | `g_over_t(f64, f64) → f64` | G/T figure of merit (dB/K) |
 | `noise` | `noise_density_dbm_per_hz(f64) → f64` | N₀ noise density (dBm/Hz) |
+| `noise` | `noise_temperature_from_y_factor(f64, f64, f64) → f64` | Linear power Y, hot K, cold K → receiver temperature (K) |
 | `p1db` | `input_to_output_db(f64, f64) → f64` | IP1dB + small-signal gain − 1 dB → OP1dB |
 | `p1db` | `output_to_input_db(f64, f64) → f64` | OP1dB − small-signal gain + 1 dB → IP1dB |
 | `p1db` | `cascade_output_p1db(f64, f64, f64) → f64` | Estimate cascade OP1dB (common dBm/dBW reference; gain in dB) |
