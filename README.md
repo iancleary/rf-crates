@@ -46,7 +46,9 @@ verifies the package archives together through Cargo's temporary registry.
 - [Reusable workspace verification procedure](.agents/skills/verify-rf-workspace/SKILL.md)
 
 The public monorepo preserves source histories and the reviewed `rfconversions`
-PR commits. Upstream PRs and original repository settings remain unchanged.
+PR commits. Pending work now lives in bounded issues and unmerged PRs here;
+original discussions remain linked, and old publishing workflows are disabled.
+See the handoff guide for the complete mapping and separately authorized follow-up.
 Ordinary CI never publishes. An explicitly authorized crate-qualified GitHub
 release starts a separate guarded publication workflow; see the release guide
 for dependency ordering, registry verification, and recovery boundaries.

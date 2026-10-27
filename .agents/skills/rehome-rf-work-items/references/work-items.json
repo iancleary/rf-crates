@@ -89,7 +89,7 @@
       "title": "touchstone: review pivoted conversion solves and error diagnostics",
       "category": "enhancement",
       "issue": 6,
-      "pull": null
+      "pull": 21
     },
     {
       "crate": "touchstone",
@@ -101,7 +101,11 @@
       "title": "touchstone: review sampled passivity and symmetry reporting",
       "category": "enhancement",
       "issue": 7,
-      "pull": null
+      "pull": 22,
+      "verification": [
+        "Full workspace `CARGO_NET_OFFLINE=true just ci`: passed, with a worktree-local Cargo target.",
+        "`cargo run --offline --release -p touchstone --example sampled_quality` from the crate directory: passed."
+      ]
     },
     {
       "crate": "touchstone",
@@ -113,7 +117,11 @@
       "title": "touchstone: review checked differential and common-mode views",
       "category": "enhancement",
       "issue": 8,
-      "pull": null
+      "pull": 23,
+      "verification": [
+        "Full workspace `CARGO_NET_OFFLINE=true just ci`: passed, with a worktree-local Cargo target.",
+        "`cargo run --offline --release -p touchstone --example mixed_mode` from the crate directory: passed."
+      ]
     },
     {
       "crate": "touchstone",
@@ -125,7 +133,11 @@
       "title": "touchstone: review common-real-reference renormalization",
       "category": "enhancement",
       "issue": 9,
-      "pull": null
+      "pull": 24,
+      "verification": [
+        "Full workspace `CARGO_NET_OFFLINE=true just ci`: passed, with a worktree-local Cargo target.",
+        "`cargo run --offline --release -p touchstone --example renormalization` from the crate directory: passed."
+      ]
     },
     {
       "crate": "touchstone",
@@ -137,7 +149,11 @@
       "title": "touchstone: review arbitrary single-pair port connections",
       "category": "enhancement",
       "issue": 10,
-      "pull": null
+      "pull": 25,
+      "verification": [
+        "Full workspace `CARGO_NET_OFFLINE=true just ci`: passed, with a worktree-local Cargo target.",
+        "`cargo run --offline --release -p touchstone --example nport_connection` from the crate directory: passed."
+      ]
     },
     {
       "crate": "touchstone",
@@ -149,7 +165,11 @@
       "title": "touchstone: review bounded experimental vector fitting",
       "category": "enhancement",
       "issue": 11,
-      "pull": null
+      "pull": 26,
+      "verification": [
+        "Full workspace `CARGO_NET_OFFLINE=true just ci`: passed, with a worktree-local Cargo target.",
+        "`cargo run --offline --release -p touchstone --example vector_fitting --features experimental-vector-fitting` from the crate directory: passed."
+      ]
     },
     {
       "crate": "gainlineup",
@@ -161,7 +181,11 @@
       "title": "gainlineup: review literature-backed modeling scope",
       "category": "documentation",
       "issue": 12,
-      "pull": null
+      "pull": 27,
+      "verification": [
+        "Full workspace `CARGO_NET_OFFLINE=true just ci`: passed, with a worktree-local Cargo target.",
+        "`uv run --offline --no-project .agents/skills/rf-literature-review/scripts/reference_cases.py` from the crate directory: passed."
+      ]
     },
     {
       "crate": "gainlineup",
@@ -173,7 +197,11 @@
       "title": "gainlineup: review finite-band spectral noise integration",
       "category": "enhancement",
       "issue": 13,
-      "pull": null
+      "pull": 28,
+      "verification": [
+        "Full workspace `CARGO_NET_OFFLINE=true just ci`: passed, with a worktree-local Cargo target.",
+        "`cargo run --offline --release -p gainlineup --example spectral_noise` from the crate directory: passed."
+      ]
     },
     {
       "crate": "gainlineup",
@@ -185,7 +213,11 @@
       "title": "gainlineup: review temperature-aware passive loss",
       "category": "enhancement",
       "issue": 14,
-      "pull": null
+      "pull": 29,
+      "verification": [
+        "Full workspace `CARGO_NET_OFFLINE=true just ci`: passed, with a worktree-local Cargo target.",
+        "`cargo run --offline --release -p gainlineup --example spectral_noise` from the crate directory: passed."
+      ]
     },
     {
       "crate": "linkbudget",
@@ -197,7 +229,10 @@
       "title": "linkbudget: review sourced DVB-S2 performance profiles",
       "category": "enhancement",
       "issue": 15,
-      "pull": null
+      "pull": 30,
+      "verification": [
+        "Full workspace `CARGO_NET_OFFLINE=true just ci`: passed, with a worktree-local Cargo target."
+      ]
     },
     {
       "crate": "linkbudget",
@@ -209,7 +244,10 @@
       "title": "linkbudget: review atmospheric attenuation and sky noise",
       "category": "enhancement",
       "issue": 16,
-      "pull": null
+      "pull": 31,
+      "verification": [
+        "Full workspace `CARGO_NET_OFFLINE=true just ci`: passed, with a worktree-local Cargo target."
+      ]
     },
     {
       "crate": "linkbudget",
@@ -221,7 +259,10 @@
       "title": "linkbudget: review offline annual rain attenuation",
       "category": "enhancement",
       "issue": 17,
-      "pull": null
+      "pull": 32,
+      "verification": [
+        "Full workspace `CARGO_NET_OFFLINE=true just ci`: passed, with a worktree-local Cargo target."
+      ]
     },
     {
       "crate": "linkbudget",
@@ -233,7 +274,11 @@
       "title": "linkbudget: review conditional margin uncertainty reporting",
       "category": "enhancement",
       "issue": 18,
-      "pull": null
+      "pull": 33,
+      "verification": [
+        "Full workspace `CARGO_NET_OFFLINE=true just ci`: passed, with a worktree-local Cargo target.",
+        "Standalone receiver example: format, Clippy, tests, actual CLI, and independent CSV verifier passed; plotting was not exercised."
+      ]
     },
     {
       "crate": "linkbudget",
@@ -245,7 +290,12 @@
       "title": "linkbudget: review accurate Gaussian tails and log-BER",
       "category": "bug",
       "issue": 19,
-      "pull": null
+      "pull": 34,
+      "verification": [
+        "Full workspace `CARGO_NET_OFFLINE=true just ci`: passed, with a worktree-local Cargo target.",
+        "Standalone receiver example: format, Clippy, tests, actual CLI, and independent CSV verifier passed; plotting was not exercised.",
+        "Existing `gaussian_references.py` precision-stability check: passed."
+      ]
     },
     {
       "crate": "linkbudget",
@@ -257,7 +307,12 @@
       "title": "linkbudget: review finite-blocklength AWGN planning",
       "category": "enhancement",
       "issue": 20,
-      "pull": null
+      "pull": 35,
+      "verification": [
+        "Full workspace `CARGO_NET_OFFLINE=true just ci`: passed, with a worktree-local Cargo target.",
+        "Standalone receiver example: format, Clippy, tests, actual CLI, and independent CSV verifier passed; plotting was not exercised.",
+        "Existing `finite_blocklength_references.py` precision-stability check: passed."
+      ]
     }
   ],
   "integrated": [
@@ -280,6 +335,92 @@
       "crate": "rfconversions",
       "source_number": 39,
       "source_commit": "1fe4d852d1d16e926dfb6071f4590da7a79b5fee"
+    }
+  ],
+  "followups": [
+    {
+      "key": "main-protection",
+      "number": 36,
+      "title": "repository: require verified changes on main",
+      "parent": null,
+      "labels": [
+        "type:task",
+        "status:review",
+        "enhancement",
+        "area:repository"
+      ]
+    },
+    {
+      "key": "publication-protection",
+      "number": 37,
+      "title": "repository: protect the registry publication boundary",
+      "parent": null,
+      "labels": [
+        "type:task",
+        "status:review",
+        "enhancement",
+        "area:repository"
+      ]
+    },
+    {
+      "key": "archive-decision",
+      "number": 38,
+      "title": "repository: decide archival of the four retired repositories",
+      "parent": null,
+      "labels": [
+        "type:task",
+        "status:review",
+        "documentation",
+        "area:repository"
+      ]
+    },
+    {
+      "key": "package-readmes",
+      "number": 39,
+      "title": "repository: refresh packaged READMEs in a future patch release",
+      "parent": null,
+      "labels": [
+        "type:task",
+        "status:review",
+        "documentation",
+        "area:repository"
+      ]
+    },
+    {
+      "key": "rfconversions-readiness",
+      "number": 40,
+      "title": "rfconversions: revalidate the three recorded correctness findings",
+      "parent": 1,
+      "labels": [
+        "type:task",
+        "status:review",
+        "documentation",
+        "crate:rfconversions"
+      ]
+    },
+    {
+      "key": "touchstone-readiness",
+      "number": 41,
+      "title": "touchstone: revalidate the six recorded correctness findings",
+      "parent": 2,
+      "labels": [
+        "type:task",
+        "status:review",
+        "documentation",
+        "crate:touchstone"
+      ]
+    },
+    {
+      "key": "gainlineup-readiness",
+      "number": 42,
+      "title": "gainlineup: revalidate the seven recorded correctness findings",
+      "parent": 3,
+      "labels": [
+        "type:task",
+        "status:review",
+        "documentation",
+        "crate:gainlineup"
+      ]
     }
   ]
 }

@@ -193,8 +193,9 @@ registry artifact rather than a potentially stale local workspace archive.
 
 Minimum-Rust-version metadata is preserved, but stable-toolchain CI does not
 certify every declared historical compiler. Do not describe these releases as
-having passed an MSRV matrix. Original upstream PRs and repository settings are
-unchanged; this workflow does not close PRs or archive old repositories.
+having passed an MSRV matrix. This release workflow does not close upstream PRs
+or archive old repositories. The separately authorized [repository handoff](repository-migration.md)
+records their later issue/PR migration, notices, and obsolete-workflow retirement.
 
 The vendored runner is unchanged from the release-skills revision recorded in
 each contract, with its SHA-256 checked on every config load. Keep workspace
