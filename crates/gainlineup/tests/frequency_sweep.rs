@@ -278,12 +278,14 @@ fn rejects_invalid_inputs_empty_lineups_and_incomplete_coverage() {
 #[test]
 fn finite_parameters_that_overflow_cascade_math_return_an_error() {
     let input = Input::new(0.0, 1e6, -80.0, Some(290.0));
-    let blocks = [FrequencyBlock::constant(Block {
-        gain_db: 4000.0,
+    let stage = FrequencyBlock::constant(Block {
+        gain_db: f64::MAX,
         noise_figure_db: 3.0,
         ..Block::default()
     })
-    .unwrap()];
+    .unwrap();
+    // Require a genuinely nonrepresentable final result after stable power addition.
+    let blocks = [stage.clone(), stage];
     let grid = FrequencySweep::linear(1e9, 2e9, 3).unwrap();
     let error = cascade_frequency_sweep(&input, &blocks, &grid).unwrap_err();
     assert!(error.to_string().contains("nonfinite cascade result"));

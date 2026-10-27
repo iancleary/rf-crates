@@ -40,6 +40,20 @@ integration, not only after the combined tree was assembled.
   frequency accessor; it is a dependency-version migration, not a change to the
   reviewed rfconversions formulas.
 
+## Downstream adoption
+
+Gainlineup now uses `rfconversions::power::add_power_db` for independent output
+noise contributions instead of converting each to watts. The existing compression
+and stage-noise models are unchanged. A public cascade regression demonstrated
+that an ideal unity stage previously changed a finite -4000 dBm noise level into
+negative infinity; the stable helper preserves the supplied level and its SNR.
+The ±4000 dBm inputs are numerical stress cases, not physical operating points.
+
+Two existing frequency-sweep error tests relied on that avoidable conversion
+overflow at 4000 dB gain. They now use two finite `f64::MAX` gains, which force a
+nonrepresentable final cumulative result. Their nonfinite-result rejection gates
+remain intact rather than pinning the numerical defect being removed.
+
 ## Repeatable numerical evidence
 
 Run from the workspace root:

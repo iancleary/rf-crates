@@ -288,22 +288,10 @@ impl SignalNode {
             output_noise_power_from_block_dbm
         );
 
-        let output_noise_power_from_node_watts =
-            rfconversions::power::dbm_to_watts(output_noise_power_from_node_dbm);
-
-        let output_noise_power_from_block_watts =
-            rfconversions::power::dbm_to_watts(output_noise_power_from_block_dbm);
-
-        let total_noise_power_at_output_watts =
-            output_noise_power_from_node_watts + output_noise_power_from_block_watts;
-
-        tracing::debug!(
-            "Total Noise Power at Output: (W) {}",
-            total_noise_power_at_output_watts
+        let total_noise_power_at_output_dbm = rfconversions::power::add_power_db(
+            output_noise_power_from_node_dbm,
+            output_noise_power_from_block_dbm,
         );
-
-        let total_noise_power_at_output_dbm =
-            rfconversions::power::watts_to_dbm(total_noise_power_at_output_watts);
 
         tracing::debug!(
             "Total Noise Power at Output: (dBm) {}",

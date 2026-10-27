@@ -204,7 +204,9 @@ fn frequency_sweep_matches_public_resolution_then_scalar_chaining_bit_for_bit() 
 #[test]
 fn all_constant_sweep_still_rejects_nonfinite_cascade_results() {
     let input = Input::new(0.0, 1e6, -80.0, Some(290.0));
-    let blocks = [FrequencyBlock::constant(block("overflow", 4000.0, 3.0, None, None)).unwrap()];
+    let stage = FrequencyBlock::constant(block("overflow", f64::MAX, 3.0, None, None)).unwrap();
+    // Two finite gains overflow the final cumulative dB result, not just a conversion.
+    let blocks = [stage.clone(), stage];
     let grid = FrequencySweep::linear(1e9, 2e9, 3).unwrap();
     let error = cascade_frequency_sweep(&input, &blocks, &grid).unwrap_err();
     assert!(error.to_string().contains("nonfinite cascade result"));

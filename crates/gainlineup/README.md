@@ -158,6 +158,12 @@ At each node in the chain, the cascade computes:
 
 Each block adds input-referred noise `kTₑB`, where `Tₑ = 290 K × (F − 1)` and `F` is its linear noise factor. The first stage starts with the source temperature, so its cumulative input-referred temperature is `Tsource + Tₑ`. Later stages use the same cascade calculation and refer each added temperature to the chain input.
 
+Independent output-noise contributions are combined directly in dBm through
+`rfconversions::power::add_power_db`, without an intermediate watt conversion.
+This preserves representable logarithmic results at extreme numerical ranges;
+it does not change the compression model or make such powers physically valid.
+The public cascade regression is in `tests/integration_rf_scenarios.rs`.
+
 Cascaded OIP3 uses output-referred powers: `1/OIP3_total =
 1/(G_stage × OIP3_previous) + 1/OIP3_stage`, with watts and linear power gain.
 SFDR compares OIP3 with the calculated noise power at that same output node,
