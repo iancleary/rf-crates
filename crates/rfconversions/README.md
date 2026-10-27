@@ -230,6 +230,14 @@ let t0 = constants::T0;             // 290.0 K (standard reference)
 | `constants` | `BOLTZMANN` | 1.380649e-23 J/K |
 | `constants` | `T0` | 290 K reference temperature |
 
+## Development and research
+
+- [Agent operating loop](docs/agent-operating-loop.md): crate boundaries and verification.
+- [Literature-backed improvement proposals](docs/literature-review.md): sourced
+  numerical and scalar-API ideas, evidence, and production acceptance criteria.
+- [RF literature-review skill](.agents/skills/rf-literature-review/SKILL.md): repeat
+  the review and run its numerical probe. Proposals are not implemented APIs.
+
 ## License
 
 MIT
